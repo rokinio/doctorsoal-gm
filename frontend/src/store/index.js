@@ -424,3 +424,36 @@ export async function saveSettings(settings) {
     stopLoading();
   }
 }
+// ارسال سوال به n8n
+export async function sendToN8n(id) {
+  try {
+    startLoading();
+
+    // ارسال درخواست به API
+    const response = await fetch(
+      `${API_BASE_URL}/raw-questions/${id}/send-to-n8n`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`خطا در ارسال سوال به n8n: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    // نمایش پیام موفقیت
+    console.log("سوال با موفقیت به n8n ارسال شد:", result);
+    return true;
+  } catch (err) {
+    setError(`خطا در ارسال سوال با شناسه ${id} به n8n: ${err.message}`);
+    console.error(err);
+    return false;
+  } finally {
+    stopLoading();
+  }
+}

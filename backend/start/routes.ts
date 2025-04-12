@@ -5,6 +5,10 @@ Route.group(() => {
   // مسیرهای مربوط به دسته‌بندی‌ها
   Route.get("/categories", "CategoriesController.index");
   Route.get("/categories/:id", "CategoriesController.show");
+  Route.post(
+    "/raw-questions/:id/send-to-n8n",
+    "RawQuestionsController.sendToN8n"
+  );
 
   // مسیرهای مربوط به سوالات خام
   Route.get("/raw-questions", "RawQuestionsController.index");

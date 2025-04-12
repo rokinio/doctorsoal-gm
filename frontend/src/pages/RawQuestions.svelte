@@ -146,10 +146,43 @@ function applyFilters() {
     fetchQuestions();
   }
 
-  // ارسال به n8n
-  function sendToN8n(id) {
-    alert(`سوال با شناسه ${id} به n8n ارسال شد`);
+// ارسال به n8n
+async function sendToN8n(id) {
+  try {
+    // نمایش پیام درحال بارگذاری
+    isLoading = true;
+    
+    // ارسال درخواست به API
+    const response = await fetch(`${API_BASE_URL}/raw-questions/${id}/send-to-n8n`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`خطا در ارسال سوال به n8n: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    // نمایش پیام موفقیت
+    alert('سوال با موفقیت به n8n ارسال شد');
+    
+    // بروزرسانی وضعیت سوال در لیست
+    const updatedQuestion = questions.find(q => q.id === id);
+    if (updatedQuestion) {
+      updatedQuestion.status = 'processing';
+      filteredQuestions = [...questions]; // بروزرسانی نمای لیست
+    }
+    
+  } catch (err) {
+    console.error('خطا در ارسال سوال به n8n:', err);
+    alert(`خطا در ارسال سوال به n8n: ${err.message}`);
+  } finally {
+    isLoading = false;
   }
+}
 
   // ویرایش سوال
   function editQuestion(id) {
