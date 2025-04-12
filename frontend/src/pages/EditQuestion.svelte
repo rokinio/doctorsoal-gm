@@ -1,168 +1,167 @@
 <script>
-    import Icon from '@iconify/svelte';
-    import { onMount } from 'svelte';
-    import { navigate } from 'svelte-routing';
-    import { API_BASE_URL } from '../config.js';
-    
-    // پارامترهای URL برای دریافت شناسه سوال
-    export let id;
-    
-    // داده‌های سوال
-    let question = {
-      id: 0,
-      question: "",
-      conversation: [],
-      category_id: null,
-      source: "",
-      status: "",
-      original_viewer_count: 0,
-      category: null
-    };
-    
-    // گزینه‌های دسته‌بندی
-    let categories = [];
-    
-    // متغیرهای لودینگ و خطا
-    let isLoading = true;
-    let error = null;
-    
-    // پیام جدید برای افزودن به گفتگو
-    let newMessage = {
-      sender: "doctor",
-      message: ""
-    };
-    
-    // دریافت اطلاعات سوال
-    async function fetchQuestion() {
-      isLoading = true;
-      error = null;
-      
-      try {
-        const response = await fetch(`${API_BASE_URL}/raw-questions/${id}`);
-        
-        if (!response.ok) {
-          throw new Error(`خطا در دریافت اطلاعات سوال: ${response.status}`);
-        }
-        
-        question = await response.json();
-        
-        // اطمینان از وجود آرایه گفتگو
-        if (!Array.isArray(question.conversation)) {
-          question.conversation = [];
-        }
-        
-      } catch (err) {
-        console.error('خطا در دریافت اطلاعات سوال:', err);
-        error = err.message;
-      } finally {
-        isLoading = false;
-      }
-    }
-    
-    // دریافت دسته‌بندی‌ها
-    async function fetchCategories() {
-      try {
-        const response = await fetch(`${API_BASE_URL}/categories`);
-        
-        if (!response.ok) {
-          throw new Error(`خطا در دریافت دسته‌بندی‌ها: ${response.status}`);
-        }
-        
-        categories = await response.json();
-      } catch (err) {
-        console.error('خطا در دریافت دسته‌بندی‌ها:', err);
-      }
-    }
-    
-    // افزودن پیام جدید به گفتگو
-    function addMessage() {
-      if (newMessage.message.trim() !== "") {
-        question.conversation = [...question.conversation, {...newMessage}];
-        newMessage.message = "";
-      }
-    }
-    
-    // حذف پیام از گفتگو
-    function removeMessage(index) {
-      question.conversation = question.conversation.filter((_, i) => i !== index);
-    }
-    
-    // ذخیره تغییرات سوال
-    async function saveQuestion() {
-      try {
-        const response = await fetch(`${API_BASE_URL}/raw-questions/${id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(question)
-        });
-        
-        if (!response.ok) {
-          throw new Error(`خطا در ذخیره سوال: ${response.status}`);
-        }
-        
-        alert('سوال با موفقیت ذخیره شد.');
-        navigate(-1);
-      } catch (err) {
-        console.error('خطا در ذخیره سوال:', err);
-        alert(`خطا در ذخیره سوال: ${err.message}`);
-      }
-    }
-    
-    // بازگشت به صفحه قبلی بدون ذخیره تغییرات
-    function cancel() {
-      if (confirm('آیا مطمئن هستید؟ تغییرات ذخیره نخواهد شد.')) {
-        navigate(-1);
-      }
-    }
-    
-    onMount(() => {
-      fetchQuestion();
-      fetchCategories();
-    });
-  </script>
+  import Icon from '@iconify/svelte';
+  import { onMount } from 'svelte';
+  import { API_BASE_URL } from '../config.js';
   
-  <div class="container mx-auto">
-    {#if isLoading}
-      <div class="flex justify-center p-12">
-        <Icon icon="mdi:loading" class="text-4xl animate-spin text-indigo-600" />
-      </div>
-    {:else if error}
-      <div class="bg-red-100 p-4 rounded-lg mb-6">
-        <p class="text-red-700">{error}</p>
-      </div>
-    {:else}
-      <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-semibold">ویرایش سوال</h1>
-        <div class="flex space-x-2 space-x-reverse">
-          <button 
-            on:click={cancel}
-            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300"
-          >
-            انصراف
-          </button>
-          <button 
-            on:click={saveQuestion}
-            class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            ذخیره
-          </button>
-        </div>
-      </div>
+  // پارامترهای URL برای دریافت شناسه سوال
+  export let id;
+  
+  // داده‌های سوال
+  let question = {
+    id: 0,
+    question: "",
+    conversation: [],
+    category_id: null,
+    source: "",
+    status: "",
+    original_viewer_count: 0,
+    category: null
+  };
+  
+  // گزینه‌های دسته‌بندی
+  let categories = [];
+  
+  // متغیرهای لودینگ و خطا
+  let isLoading = true;
+  let error = null;
+  
+  // پیام جدید برای افزودن به گفتگو
+  let newMessage = {
+    sender: "doctor",
+    message: ""
+  };
+  
+  // دریافت اطلاعات سوال
+  async function fetchQuestion() {
+    isLoading = true;
+    error = null;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/raw-questions/${id}`);
       
-      <div class="bg-white shadow-md rounded-lg p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h2 class="text-lg font-semibold mb-4">اطلاعات سوال</h2>
-            
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">شناسه</label>
-              <input
-                type="text"
-                value={question.id}
-                disabled
-                class="w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
+      if (!response.ok) {
+        throw new Error(`خطا در دریافت اطلاعات سوال: ${response.status}`);
+      }
+      
+      question = await response.json();
+      
+      // اطمینان از وجود آرایه گفتگو
+      if (!Array.isArray(question.conversation)) {
+        question.conversation = [];
+      }
+      
+    } catch (err) {
+      console.error('خطا در دریافت اطلاعات سوال:', err);
+      error = err.message;
+    } finally {
+      isLoading = false;
+    }
+  }
+  
+  // دریافت دسته‌بندی‌ها
+  async function fetchCategories() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/categories`);
+      
+      if (!response.ok) {
+        throw new Error(`خطا در دریافت دسته‌بندی‌ها: ${response.status}`);
+      }
+      
+      categories = await response.json();
+    } catch (err) {
+      console.error('خطا در دریافت دسته‌بندی‌ها:', err);
+    }
+  }
+  
+  // افزودن پیام جدید به گفتگو
+  function addMessage() {
+    if (newMessage.message.trim() !== "") {
+      question.conversation = [...question.conversation, {...newMessage}];
+      newMessage.message = "";
+    }
+  }
+  
+  // حذف پیام از گفتگو
+  function removeMessage(index) {
+    question.conversation = question.conversation.filter((_, i) => i !== index);
+  }
+  
+  // ذخیره تغییرات سوال
+  async function saveQuestion() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/raw-questions/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(question)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`خطا در ذخیره سوال: ${response.status}`);
+      }
+      
+      alert('سوال با موفقیت ذخیره شد.');
+      window.history.back(); // استفاده از history API به جای navigate
+    } catch (err) {
+      console.error('خطا در ذخیره سوال:', err);
+      alert(`خطا در ذخیره سوال: ${err.message}`);
+    }
+  }
+  
+  // بازگشت به صفحه قبلی بدون ذخیره تغییرات
+  function cancel() {
+    if (confirm('آیا مطمئن هستید؟ تغییرات ذخیره نخواهد شد.')) {
+      window.history.back(); // استفاده از history API به جای navigate
+    }
+  }
+  
+  onMount(() => {
+    fetchQuestion();
+    fetchCategories();
+  });
+</script>
+
+<div class="container mx-auto">
+  {#if isLoading}
+    <div class="flex justify-center p-12">
+      <Icon icon="mdi:loading" class="text-4xl animate-spin text-indigo-600" />
+    </div>
+  {:else if error}
+    <div class="bg-red-100 p-4 rounded-lg mb-6">
+      <p class="text-red-700">{error}</p>
+    </div>
+  {:else}
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-semibold">ویرایش سوال</h1>
+      <div class="flex space-x-2 space-x-reverse">
+        <button 
+          on:click={cancel}
+          class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300"
+        >
+          انصراف
+        </button>
+        <button 
+          on:click={saveQuestion}
+          class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+        >
+          ذخیره
+        </button>
+      </div>
+    </div>
+    
+    <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h2 class="text-lg font-semibold mb-4">اطلاعات سوال</h2>
+          
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">شناسه</label>
+            <input
+              type="text"
+              value={question.id}
+              disabled
+              class="w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
               />
             </div>
             

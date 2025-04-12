@@ -3,10 +3,12 @@
   import { onMount } from 'svelte';
   import { API_BASE_URL } from '../config.js';
 
-  import { navigate } from 'svelte-routing';
-  let navigateFunc = typeof navigate === 'function' ? navigate : (path) => {
-  window.location.href = path;
-  };
+  // برای رفع مشکل از window.location استفاده می‌کنیم به جای navigate
+  function navigateToEditQuestion(id) {
+    if (id) {
+      window.location.href = `/edit-question/${id}`;
+    }
+  }
 
   // متغیرهای دیتا
   let questions = [];
@@ -123,10 +125,8 @@
 
   // ویرایش سوال
   function editQuestion(id) {
-  if (id) {
-    navigateFunc(`/edit-question/${id}`);
+    navigateToEditQuestion(id);
   }
-}
 
   // حذف سوال
   async function deleteQuestion(id) {
