@@ -15,7 +15,7 @@
   let filteredQuestions = [];
   let isLoading = true;
   let error = null;
-
+  let categories = []; // برای نگهداری لیست دسته‌بندی‌ها
   // متغیرهای پیجینیشن
   let currentPage = 1;
   let totalPages = 1;
@@ -23,7 +23,14 @@
   let limit = 10;
   let limitOptions = [10, 25, 50, 100];
   let maxPageButtons = 5; // Maximum number of page buttons to show
-  
+  // در بخش متغیرهای دیتا، بعد از متغیر categories اضافه کنید
+let statuses = [
+  { id: 'pending', name: 'در انتظار' },
+  { id: 'processing', name: 'در حال پردازش' },
+  { id: 'review', name: 'بررسی' },
+  { id: 'published', name: 'منتشر شده' },
+  { id: 'rejected', name: 'رد شده' }
+];
   // متغیرهای فیلتر
   let filters = {
     id: '',
@@ -31,70 +38,90 @@
     subject: '',
     category: '',
     site: '',
-    department: ''
+    department: '',
+    status: ''
   };
-
-  // دریافت داده‌ها از API
-  async function fetchQuestions() {
-    isLoading = true;
-    error = null;
-
-    try {
-      // ساخت پارامترهای URL برای فیلترها
-      const searchParams = new URLSearchParams({
-        page: currentPage,
-        limit: limit
-      });
-
-      if (filters.id) searchParams.append('id', filters.id);
-      if (filters.subject) searchParams.append('search', filters.subject);
-      if (filters.category) searchParams.append('category_id', filters.category);
-
-      const response = await fetch(`${API_BASE_URL}/raw-questions?${searchParams.toString()}`);
-
-      if (!response.ok) {
-        throw new Error(`خطا در دریافت اطلاعات: ${response.status}`);
-      }
-
-      const result = await response.json();
-      questions = result.data || [];
-      filteredQuestions = [...questions]; // با کپی کردن آرایه کار می‌کنیم
-
-      // اطلاعات پیجینیشن
-      if (result.meta) {
-        totalPages = result.meta.last_page || 1;
-        totalRecords = result.meta.total || 0;
-        
-        // Ensure current page is valid
-        if (currentPage > totalPages && totalPages > 0) {
-          currentPage = totalPages;
-          // Re-fetch with corrected page
-          return fetchQuestions();
-        }
-      }
-    } catch (err) {
-      console.error('خطا در دریافت سوالات:', err);
-      error = err.message;
-    } finally {
-      isLoading = false;
+// این تابع را بعد از تابع fetchQuestions اضافه کنید
+async function fetchCategories() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/categories`);
+    
+    if (!response.ok) {
+      throw new Error(`خطا در دریافت دسته‌بندی‌ها: ${response.status}`);
     }
+    
+    categories = await response.json();
+  } catch (err) {
+    console.error('خطا در دریافت دسته‌بندی‌ها:', err);
+    // اینجا می‌توانید خطا را به کاربر نمایش دهید یا آن را مدیریت کنید
   }
+}
+  // دریافت داده‌ها از API
+// دریافت داده‌ها از API
+// دریافت داده‌ها از API
+async function fetchQuestions() {
+  isLoading = true;
+  error = null;
+
+  try {
+    // ساخت پارامترهای URL برای فیلترها
+    const searchParams = new URLSearchParams({
+      page: currentPage,
+      limit: limit
+    });
+
+    if (filters.id) searchParams.append('id', filters.id);
+    if (filters.subject) searchParams.append('search', filters.subject);
+    if (filters.category) searchParams.append('category_id', filters.category);
+    if (filters.status) searchParams.append('status', filters.status); // اضافه کردن این خط
+
+    const response = await fetch(`${API_BASE_URL}/raw-questions?${searchParams.toString()}`);
+
+    if (!response.ok) {
+      throw new Error(`خطا در دریافت اطلاعات: ${response.status}`);
+    }
+
+    const result = await response.json();
+    questions = result.data || [];
+    filteredQuestions = [...questions]; // با کپی کردن آرایه کار می‌کنیم
+
+    // اطلاعات پیجینیشن
+    if (result.meta) {
+      totalPages = result.meta.last_page || 1;
+      totalRecords = result.meta.total || 0;
+      
+      // Ensure current page is valid
+      if (currentPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+        // Re-fetch with corrected page
+        return fetchQuestions();
+      }
+    }
+  } catch (err) {
+    console.error('خطا در دریافت سوالات:', err);
+    error = err.message;
+  } finally {
+    isLoading = false;
+  }
+}
 
   // اعمال فیلترها به صورت محلی
-  function applyFilters() {
-    if (!questions) return; // اطمینان از وجود داده
+// اعمال فیلترها به صورت محلی
+function applyFilters() {
+  if (!questions) return; // اطمینان از وجود داده
 
-    filteredQuestions = questions.filter(q => {
-      return (
-        (filters.id === '' || (q.id !== undefined && q.id !== null && q.id.toString().includes(filters.id))) &&
-        (filters.trackingCode === '' || (q.tracking_code !== undefined && q.tracking_code !== null && q.tracking_code.toLowerCase().includes(filters.trackingCode.toLowerCase()))) &&
-        (filters.subject === '' || (q.question !== undefined && q.question !== null && q.question.toLowerCase().includes(filters.subject.toLowerCase()))) &&
-        (filters.category === '' || (q.category?.name !== undefined && q.category?.name !== null && q.category?.name.toLowerCase().includes(filters.category.toLowerCase()))) &&
-        (filters.site === '' || (q.source !== undefined && q.source !== null && q.source.toLowerCase().includes(filters.site.toLowerCase()))) &&
-        (filters.department === '' || (q.category?.name !== undefined && q.category?.name !== null && q.category?.name.toLowerCase().includes(filters.department.toLowerCase())))
-      );
-    });
-  }
+  filteredQuestions = questions.filter(q => {
+    return (
+      (filters.id === '' || (q.id !== undefined && q.id !== null && q.id.toString().includes(filters.id))) &&
+      (filters.trackingCode === '' || (q.tracking_code !== undefined && q.tracking_code !== null && q.tracking_code.toLowerCase().includes(filters.trackingCode.toLowerCase()))) &&
+      (filters.subject === '' || (q.question !== undefined && q.question !== null && q.question.toLowerCase().includes(filters.subject.toLowerCase()))) &&
+      (filters.category === '' || (q.category_id !== undefined && q.category_id !== null && q.category_id.toString() === filters.category.toString())) &&
+      (filters.site === '' || (q.source !== undefined && q.source !== null && q.source.toLowerCase().includes(filters.site.toLowerCase()))) &&
+      (filters.department === '' || (q.category?.name !== undefined && q.category?.name !== null && q.category?.name.toLowerCase().includes(filters.department.toLowerCase()))) &&
+      (filters.status === '' || (q.status !== undefined && q.status !== null && q.status === filters.status))
+    );
+  });
+}
 
   // پاک کردن فیلترها
   function resetFilters() {
@@ -104,7 +131,8 @@
       subject: '',
       category: '',
       site: '',
-      department: ''
+      department: '',
+      status: ''
     };
     
     // Make sure questions array exists before trying to copy it
@@ -233,6 +261,7 @@
     try {
       // اطمینان از فراخوانی API فقط بعد از مانت کامپوننت
       fetchQuestions();
+      fetchCategories(); 
     } catch (err) {
       console.error('Error in onMount:', err);
       error = err.message;
@@ -278,12 +307,29 @@
       </div>
       <div class="w-full md:w-1/2 lg:w-1/6 px-2 mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-1">دسته‌بندی</label>
-        <input
-          type="text"
+        <select
           bind:value={filters.category}
-          on:input={applyFilters}
+          on:change={applyFilters}
           class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-        />
+        >
+          <option value="">همه دسته‌بندی‌ها</option>
+          {#each categories as category}
+            <option value={category.id}>{category.name}</option>
+          {/each}
+        </select>
+      </div>
+      <div class="w-full md:w-1/2 lg:w-1/6 px-2 mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">وضعیت</label>
+        <select
+          bind:value={filters.status}
+          on:change={applyFilters}
+          class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+        >
+          <option value="">همه وضعیت‌ها</option>
+          {#each statuses as status}
+            <option value={status.id}>{status.name}</option>
+          {/each}
+        </select>
       </div>
       <div class="w-full md:w-1/2 lg:w-1/6 px-2 mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-1">سایت</label>
