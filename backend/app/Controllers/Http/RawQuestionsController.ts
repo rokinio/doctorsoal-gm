@@ -1,0 +1,128 @@
+// app/Controllers/Http/RawQuestionsController.ts
+import { HttpContextContract } from "@ioc:Adonis/Core/HttpContext";
+import RawQuestion from "App/Models/RawQuestion";
+
+export default class RawQuestionsController {
+  // دریافت لیست سوالات خام با پشتیبانی از صفحه‌بندی و فیلترها
+  public async index({ request, response }: HttpContextContract) {
+    try {
+      const page = request.input("page", 1);
+      const limit = request.input("limit", 10);
+
+      // دریافت پارامترهای فیلتر
+      const status = request.input("status");
+      const categoryId = request.input("category_id");
+      const search = request.input("search");
+
+      const query = RawQuestion.query().preload("category"); // پیش‌بارگذاری اطلاعات دسته‌بندی
+
+      // اعمال فیلترها
+      if (status) {
+        query.where("status", status);
+      }
+
+      if (categoryId) {
+        query.where("category_id", categoryId);
+      }
+
+      if (search) {
+        query.where("question", "ILIKE", `%${search}%`);
+      }
+
+      // اضافه کردن مرتب‌سازی بر اساس آیدی به صورت نزولی
+      query.orderBy("id", "desc");
+
+      const rawQuestions = await query.paginate(page, limit);
+
+      return response.ok(rawQuestions);
+    } catch (error) {
+      return response.internalServerError({
+        error: "خطا در دریافت سوالات خام",
+        details: error.message,
+      });
+    }
+  }
+
+  // دریافت اطلاعات آماری سوالات خام
+  public async stats({ response }: HttpContextContract) {
+    try {
+      const totalCount = await RawQuestion.query().count('* as total');
+      const minId = await RawQuestion.query().min('id as min_id');
+      const maxId = await RawQuestion.query().max('id as max_id');
+      
+      return response.ok({
+        total_records: totalCount[0].$extras.total,
+        min_id: minId[0].$extras.min_id,
+        max_id: maxId[0].$extras.max_id,
+        message: 'آیدی‌ها به صورت خودکار افزایشی هستند و در صورت حذف رکورد، شماره آن مجدداً استفاده نمی‌شود'
+      });
+    } catch (error) {
+      return response.internalServerError({
+        error: "خطا در دریافت آمار سوالات خام",
+        details: error.message,
+      });
+    }
+  }
+
+  // دریافت جزئیات یک سوال خام
+  public async show({ params, response }: HttpContextContract) {
+    try {
+      const rawQuestion = await RawQuestion.query()
+        .where("id", params.id)
+        .preload("category")
+        .firstOrFail();
+
+      return response.ok(rawQuestion);
+    } catch (error) {
+      return response.notFound({ error: "سوال مورد نظر یافت نشد" });
+    }
+  }
+
+  // به‌روزرسانی یک سوال خام
+  public async update({ params, request, response }: HttpContextContract) {
+    try {
+      const rawQuestion = await RawQuestion.findOrFail(params.id);
+
+      // دریافت داده‌های ارسالی
+      const data = request.only([
+        "question",
+        "conversation",
+        "source",
+        "category_id",
+        "original_viewer_count",
+        "status",
+        "ai_response",
+        "au",
+      ]);
+
+      // به‌روزرسانی داده‌ها
+      rawQuestion.merge(data);
+      await rawQuestion.save();
+
+      // بارگذاری مجدد دسته‌بندی برای ارسال در پاسخ
+      await rawQuestion.load("category");
+
+      return response.ok(rawQuestion);
+    } catch (error) {
+      if (error.code === "E_ROW_NOT_FOUND") {
+        return response.notFound({ error: "سوال مورد نظر یافت نشد" });
+      }
+      return response.internalServerError({
+        error: "خطا در به‌روزرسانی سوال",
+        details: error.message,
+      });
+    }
+  }
+
+  // حذف یک سوال خام
+  public async destroy({ params, response }: HttpContextContract) {
+    try {
+      const rawQuestion = await RawQuestion.findOrFail(params.id);
+      await rawQuestion.delete();
+
+      return response.ok({ message: "سوال با موفقیت حذف شد" });
+    } catch (error) {
+      return response.notFound({ error: "سوال مورد نظر یافت نشد" });
+    }
+  }
+}

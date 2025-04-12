@@ -2,47 +2,77 @@
     import Icon from '@iconify/svelte';
     import { onMount } from 'svelte';
     import { navigate } from 'svelte-routing';
+    import { API_BASE_URL } from '../config.js';
     
     // پارامترهای URL برای دریافت شناسه سوال
     export let id;
     
-    // داده‌های سوال (به صورت نمایشی)
+    // داده‌های سوال
     let question = {
       id: 0,
-      trackingCode: "",
-      subject: "",
-      category: "",
-      site: "",
-      department: "",
+      question: "",
+      conversation: [],
+      category_id: null,
       source: "",
-      viewer: 0,
-      date: {
-        unix: 0,
-        formatted: ""
-      },
-      conversation: []
+      status: "",
+      original_viewer_count: 0,
+      category: null
     };
     
     // گزینه‌های دسته‌بندی
-    let categories = [
-      "پوست", "مغز و اعصاب", "آلرژی", "ارتوپدی", "گوارش", "قلب و عروق", "ریه", "روانپزشکی", "تغذیه"
-    ];
+    let categories = [];
     
-    // گزینه‌های سایت
-    let sites = [
-      "سایت دکتر سلام", "کلینیک آنلاین"
-    ];
-    
-    // گزینه‌های بخش
-    let departments = [
-      "پوست و مو", "مغز و اعصاب", "آلرژی", "ارتوپدی", "گوارش", "قلب و عروق", "ریه", "روانپزشکی", "تغذیه"
-    ];
+    // متغیرهای لودینگ و خطا
+    let isLoading = true;
+    let error = null;
     
     // پیام جدید برای افزودن به گفتگو
     let newMessage = {
       sender: "doctor",
       message: ""
     };
+    
+    // دریافت اطلاعات سوال
+    async function fetchQuestion() {
+      isLoading = true;
+      error = null;
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/raw-questions/${id}`);
+        
+        if (!response.ok) {
+          throw new Error(`خطا در دریافت اطلاعات سوال: ${response.status}`);
+        }
+        
+        question = await response.json();
+        
+        // اطمینان از وجود آرایه گفتگو
+        if (!Array.isArray(question.conversation)) {
+          question.conversation = [];
+        }
+        
+      } catch (err) {
+        console.error('خطا در دریافت اطلاعات سوال:', err);
+        error = err.message;
+      } finally {
+        isLoading = false;
+      }
+    }
+    
+    // دریافت دسته‌بندی‌ها
+    async function fetchCategories() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/categories`);
+        
+        if (!response.ok) {
+          throw new Error(`خطا در دریافت دسته‌بندی‌ها: ${response.status}`);
+        }
+        
+        categories = await response.json();
+      } catch (err) {
+        console.error('خطا در دریافت دسته‌بندی‌ها:', err);
+      }
+    }
     
     // افزودن پیام جدید به گفتگو
     function addMessage() {
@@ -58,12 +88,26 @@
     }
     
     // ذخیره تغییرات سوال
-    function saveQuestion() {
-      alert(`سوال با موفقیت ذخیره شد.`);
-      // اینجا عملیات ذخیره‌سازی در سرور انجام می‌شود
-      
-      // بازگشت به صفحه قبلی
-      navigate(-1);
+    async function saveQuestion() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/raw-questions/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(question)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`خطا در ذخیره سوال: ${response.status}`);
+        }
+        
+        alert('سوال با موفقیت ذخیره شد.');
+        navigate(-1);
+      } catch (err) {
+        console.error('خطا در ذخیره سوال:', err);
+        alert(`خطا در ذخیره سوال: ${err.message}`);
+      }
     }
     
     // بازگشت به صفحه قبلی بدون ذخیره تغییرات
@@ -73,204 +117,168 @@
       }
     }
     
-    // بارگذاری اطلاعات سوال
-    onMount(async () => {
-      // در حالت واقعی، اطلاعات از سرور دریافت می‌شود
-      // اینجا برای نمایش، یک نمونه داده ساختگی استفاده می‌کنیم
-      
-      const exampleData = {
-        id: id,
-        trackingCode: `QS-${12345 + parseInt(id)}`,
-        subject: "مشکل پوستی و جوش صورت",
-        category: "پوست",
-        site: "سایت دکتر سلام",
-        department: "پوست و مو",
-        source: "یسشیبیسبیس",
-        viewer: 513,
-        date: {
-          unix: 1392034667,
-          formatted: "2014-02-10 15:47:47"
-        },
-        conversation: [
-          {
-            sender: "user",
-            message: "با سلام و خسته نباشید خدمت آقای دکتر ،نزدیک به یک ساله روی گونم لکه قهوه ای ظاهر شده با توجه زیاد میشه دیدش ولی من به پوستم خیلی اهمیت میدم از صابون زد قارچ استفاده کردم ولی هیچ بهتر نشده ممنون میشم کمکم کنید"
-          },
-          {
-            sender: "doctor",
-            message: "سلام سامره جان\nبهتره معاینه بشی\nلک های قهوه ای علل متعددی دارد که مهمترین اقدام شناسایی علت زمینه ای آن است.\nممکنه با کرم موضعی یا لیزر اوضاع بهتر بشه\nعلی الحساب ضد آفتاب فراموشت نشه\nموفق"
-          }
-        ]
-      };
-      
-      question = exampleData;
+    onMount(() => {
+      fetchQuestion();
+      fetchCategories();
     });
   </script>
   
   <div class="container mx-auto">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-semibold">ویرایش سوال</h1>
-      <div class="flex space-x-2 space-x-reverse">
-        <button 
-          on:click={cancel}
-          class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300"
-        >
-          انصراف
-        </button>
-        <button 
-          on:click={saveQuestion}
-          class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-        >
-          ذخیره
-        </button>
+    {#if isLoading}
+      <div class="flex justify-center p-12">
+        <Icon icon="mdi:loading" class="text-4xl animate-spin text-indigo-600" />
       </div>
-    </div>
-    
-    <div class="bg-white shadow-md rounded-lg p-6 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h2 class="text-lg font-semibold mb-4">اطلاعات سوال</h2>
-          
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">شناسه</label>
-            <input
-              type="text"
-              value={question.id}
-              disabled
-              class="w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
-            />
-          </div>
-          
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">کد رهگیری</label>
-            <input
-              type="text"
-              bind:value={question.trackingCode}
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-            />
-          </div>
-          
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">موضوع</label>
-            <input
-              type="text"
-              bind:value={question.subject}
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-            />
-          </div>
-          
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">دسته‌بندی</label>
-            <select
-              bind:value={question.category}
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-            >
-              {#each categories as category}
-                <option value={category}>{category}</option>
-              {/each}
-            </select>
-          </div>
-        </div>
-        
-        <div>
-          <h2 class="text-lg font-semibold mb-4">اطلاعات تکمیلی</h2>
-          
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">سایت</label>
-            <select
-              bind:value={question.site}
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-            >
-              {#each sites as site}
-                <option value={site}>{site}</option>
-              {/each}
-            </select>
-          </div>
-          
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">بخش</label>
-            <select
-              bind:value={question.department}
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-            >
-              {#each departments as department}
-                <option value={department}>{department}</option>
-              {/each}
-            </select>
-          </div>
-          
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">منبع</label>
-            <input
-              type="text"
-              bind:value={question.source}
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-            />
-          </div>
-          
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">تعداد بازدید</label>
-            <input
-              type="number"
-              bind:value={question.viewer}
-              min="0"
-              class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-            />
-          </div>
-        </div>
+    {:else if error}
+      <div class="bg-red-100 p-4 rounded-lg mb-6">
+        <p class="text-red-700">{error}</p>
       </div>
-    </div>
-    
-    <div class="bg-white shadow-md rounded-lg p-6">
-      <h2 class="text-lg font-semibold mb-4">گفتگو</h2>
-      
-      <div class="space-y-4 mb-6">
-        {#each question.conversation as message, index}
-          <div class={`p-4 rounded-lg ${message.sender === 'user' ? 'bg-gray-100' : 'bg-indigo-50'}`}>
-            <div class="flex justify-between items-start mb-2">
-              <div class="font-semibold">
-                {message.sender === 'user' ? 'کاربر' : 'پزشک'}
-              </div>
-              <button 
-                on:click={() => removeMessage(index)}
-                class="text-red-600 hover:text-red-800"
-                title="حذف پیام"
-              >
-                <Icon icon="mdi:delete" />
-              </button>
-            </div>
-            <div class="whitespace-pre-line">{message.message}</div>
-          </div>
-        {/each}
-      </div>
-      
-      <div class="border-t pt-4">
-        <h3 class="text-md font-medium mb-2">افزودن پیام جدید</h3>
-        <div class="mb-2">
-          <select
-            bind:value={newMessage.sender}
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          >
-            <option value="user">کاربر</option>
-            <option value="doctor">پزشک</option>
-          </select>
-        </div>
-        <div class="mb-2">
-          <textarea
-            bind:value={newMessage.message}
-            rows="4"
-            placeholder="متن پیام را وارد کنید..."
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          ></textarea>
-        </div>
-        <div class="flex justify-end">
+    {:else}
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-semibold">ویرایش سوال</h1>
+        <div class="flex space-x-2 space-x-reverse">
           <button 
-            on:click={addMessage}
-            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            on:click={cancel}
+            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
-            افزودن پیام
+            انصراف
+          </button>
+          <button 
+            on:click={saveQuestion}
+            class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            ذخیره
           </button>
         </div>
       </div>
-    </div>
+      
+      <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h2 class="text-lg font-semibold mb-4">اطلاعات سوال</h2>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">شناسه</label>
+              <input
+                type="text"
+                value={question.id}
+                disabled
+                class="w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
+              />
+            </div>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">موضوع</label>
+              <input
+                type="text"
+                bind:value={question.question}
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+              />
+            </div>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">دسته‌بندی</label>
+              <select
+                bind:value={question.category_id}
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+              >
+                <option value={null}>بدون دسته‌بندی</option>
+                {#each categories as category}
+                  <option value={category.id}>{category.name}</option>
+                {/each}
+              </select>
+            </div>
+          </div>
+          
+          <div>
+            <h2 class="text-lg font-semibold mb-4">اطلاعات تکمیلی</h2>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">منبع</label>
+              <input
+                type="text"
+                bind:value={question.source}
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+              />
+            </div>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">وضعیت</label>
+              <select
+                bind:value={question.status}
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+              >
+                <option value="pending">در انتظار</option>
+                <option value="processing">در حال پردازش</option>
+                <option value="review">بررسی</option>
+                <option value="published">منتشر شده</option>
+                <option value="rejected">رد شده</option>
+              </select>
+            </div>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">تعداد بازدید</label>
+              <input
+                type="number"
+                bind:value={question.original_viewer_count}
+                min="0"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white shadow-md rounded-lg p-6">
+        <h2 class="text-lg font-semibold mb-4">گفتگو</h2>
+        
+        <div class="space-y-4 mb-6">
+          {#each question.conversation as message, index}
+            <div class={`p-4 rounded-lg ${message.sender === 'user' ? 'bg-gray-100' : 'bg-indigo-50'}`}>
+              <div class="flex justify-between items-start mb-2">
+                <div class="font-semibold">
+                  {message.sender === 'user' ? 'کاربر' : 'پزشک'}
+                </div>
+                <button 
+                  on:click={() => removeMessage(index)}
+                  class="text-red-600 hover:text-red-800"
+                  title="حذف پیام"
+                >
+                  <Icon icon="mdi:delete" />
+                </button>
+              </div>
+              <div class="whitespace-pre-line">{message.message}</div>
+            </div>
+          {/each}
+        </div>
+        
+        <div class="border-t pt-4">
+          <h3 class="text-md font-medium mb-2">افزودن پیام جدید</h3>
+          <div class="mb-2">
+            <select
+              bind:value={newMessage.sender}
+              class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            >
+              <option value="user">کاربر</option>
+              <option value="doctor">پزشک</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <textarea
+              bind:value={newMessage.message}
+              rows="4"
+              placeholder="متن پیام را وارد کنید..."
+              class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            ></textarea>
+          </div>
+          <div class="flex justify-end">
+            <button 
+              on:click={addMessage}
+              class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            >
+              افزودن پیام
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
   </div>
