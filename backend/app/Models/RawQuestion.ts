@@ -21,6 +21,9 @@ export default class RawQuestion extends BaseModel {
   @column()
   public categoryId: number | null;
 
+  @column.dateTime()
+  public publishDate: DateTime;
+
   @column()
   public originalViewerCount: number;
 

@@ -3,7 +3,8 @@
   import { navigate } from 'svelte-routing';
   import { onMount } from 'svelte';
   import { API_BASE_URL } from '../config.js';
-    
+  import PublishedQuestionsChart from '../components/PublishedQuestionsChart.svelte';
+
   // داده‌های نمایشی برای داشبورد
   let stats = [
     { title: 'سوالات خام', count: 0, icon: 'mdi:file-question', color: 'bg-blue-500' },
@@ -39,32 +40,7 @@
     }
   }
 
-  // داده‌های نمودار
-  let chartData = [];
-  let maxChartValue = 0;
-  let isChartLoading = true;
-  let chartError = null;
-
-  // دریافت آمار هفتگی
-  async function fetchWeeklyStats() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/weekly-stats`);
-      
-      if (!response.ok) {
-        throw new Error(`خطا در دریافت آمار هفتگی: ${response.status}`);
-      }
-      
-      chartData = await response.json();
-      maxChartValue = Math.max(...chartData.map(item => item.count));
-      
-      chartError = null;
-    } catch (err) {
-      console.error('خطا در دریافت آمار هفتگی:', err);
-      chartError = err.message;
-    } finally {
-      isChartLoading = false;
-    }
-  }
+  
     
   // داده‌های سوالات اخیر
   let recentQuestions = [];
@@ -98,8 +74,7 @@
   onMount(() => {
     fetchDashboardStats();
     fetchRecentQuestions();
-    fetchWeeklyStats();
-  });
+      });
 </script>
   
 <div class="container mx-auto">
@@ -130,36 +105,7 @@
   
   <div class="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-8">
     <!-- نمودار آمار سوالات -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <h2 class="text-lg font-semibold mb-4">آمار سوالات منتشر شده اخیر</h2>
-      
-      {#if isChartLoading}
-        <div class="flex justify-center items-center h-64">
-          <Icon icon="mdi:loading" class="text-3xl animate-spin text-indigo-600" />
-        </div>
-      {:else if chartError}
-        <div class="bg-red-100 text-red-700 p-4 rounded-lg h-64 flex items-center justify-center">
-          <p>{chartError}</p>
-        </div>
-      {:else if chartData.length === 0}
-        <div class="h-64 flex items-center justify-center text-gray-500">
-          <p>داده‌ای برای نمایش وجود ندارد</p>
-        </div>
-      {:else}
-        <div class="h-64 flex items-end justify-between">
-          {#each chartData as item}
-            <div class="flex flex-col items-center" style="width: calc(100% / {chartData.length});">
-              <div 
-                class="bg-blue-500 w-full rounded-t-sm transition-all duration-500" 
-                style="height: {maxChartValue > 0 ? (item.count / maxChartValue) * 80 : 0}%">
-              </div>
-              <div class="mt-2 text-xs text-center">{item.day}</div>
-              <div class="text-xs font-bold">{item.count}</div>
-            </div>
-          {/each}
-        </div>
-      {/if}
-    </div>
+    <PublishedQuestionsChart />
     
     <!-- سوالات اخیر -->
     <div class="bg-white rounded-lg shadow-md p-6">

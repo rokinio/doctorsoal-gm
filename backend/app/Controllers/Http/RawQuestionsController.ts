@@ -320,4 +320,38 @@ export default class RawQuestionsController {
       });
     }
   }
+  public async publishedStats({ response }: HttpContextContract) {
+    try {
+      // به دست آوردن 7 روز اخیر
+      const dates = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        dates.push(date.toISOString().split("T")[0]); // فرمت YYYY-MM-DD
+      }
+
+      // دریافت آمار برای هر روز
+      const stats = [];
+      for (const date of dates) {
+        // استفاده از updated_at به جای publish_date
+        const count = await RawQuestion.query()
+          .where("status", "published")
+          .whereRaw("DATE(updated_at) = ?", [date])
+          .count("* as count");
+
+        stats.push({
+          date: date,
+          count: parseInt(count[0].$extras.count || "0"),
+        });
+      }
+
+      return response.ok(stats);
+    } catch (error) {
+      console.error("Error in publishedStats:", error);
+      return response.internalServerError({
+        error: "خطا در دریافت آمار انتشار",
+        details: error.message,
+      });
+    }
+  }
 }
