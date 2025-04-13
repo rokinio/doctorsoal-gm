@@ -2,6 +2,26 @@
 import Route from "@ioc:Adonis/Core/Route";
 
 Route.group(() => {
+  // دریافت لیست سوالات منتشر شده
+  Route.get("/published-questions", "PublishedQuestionsController.index");
+
+  // دریافت جزئیات یک سوال منتشر شده (با id یا slug)
+  Route.get("/published-questions/:id", "PublishedQuestionsController.show");
+
+  // انتشار یک سوال
+  Route.post(
+    "/raw-questions/:id/publish",
+    "PublishedQuestionsController.publish"
+  );
+
+  // به‌روزرسانی یک سوال منتشر شده
+  Route.put("/published-questions/:id", "PublishedQuestionsController.update");
+
+  // حذف انتشار یک سوال
+  Route.delete(
+    "/published-questions/:id",
+    "PublishedQuestionsController.destroy"
+  );
   // مسیرهای مربوط به دسته‌بندی‌ها
   Route.get("/categories", "CategoriesController.index");
   Route.get("/categories/:id", "CategoriesController.show");
