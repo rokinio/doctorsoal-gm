@@ -1,1 +1,5 @@
-export const API_BASE_URL = "http://127.0.0.1:3333/api";
+// frontend/src/config.js
+export const API_BASE_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:3333/api"
+    : `${window.location.protocol}//${window.location.host}/api`;

@@ -1,0 +1,46 @@
+version: "3"
+
+services:
+  doctorsoal_frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: doctorsoal_frontend:latest
+    container_name: doctorsoal_frontend
+    ports:
+      - "3200:80"
+    restart: unless-stopped
+    networks:
+      - hamyar_default
+
+  doctorsoal_backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: doctorsoal_backend:latest
+    container_name: doctorsoal_backend
+    ports:
+      - "3201:3333"
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - hamyar_default
+      - mysql_default
+    env_file:
+      - ./.env.production
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+  redis:
+    image: redis:7
+    container_name: doctorsoal_redis
+    restart: unless-stopped
+    networks:
+      - hamyar_default
+
+networks:
+  hamyar_default:
+    external: true
+  mysql_default:
+    external: true

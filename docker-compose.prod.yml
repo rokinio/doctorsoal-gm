@@ -1,0 +1,61 @@
+version: "3"
+
+services:
+  doctorsoal_frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: https://panel.doctorsoal.com/api
+    image: doctorsoal_frontend:latest
+    container_name: doctorsoal_frontend
+    ports:
+      - "3200:80"
+    restart: unless-stopped
+    networks:
+      - hamyar_default
+
+  doctorsoal_backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: doctorsoal_backend:latest
+    container_name: doctorsoal_backend
+    ports:
+      - "3201:3333"
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - hamyar_default
+      - mysql_default
+    env_file:
+      - ./.env.production
+    environment:
+      - REDIS_HOST=doctorsoal_redis
+      - REDIS_PORT=6379
+      - HOST=0.0.0.0
+      - PORT=3333
+      - DB_CONNECTION=pg
+      - PG_HOST=mysql-mysql-1
+      - PG_PORT=3306
+      - PG_USER=${DB_USER}
+      - PG_PASSWORD=${DB_PASSWORD}
+      - PG_DB_NAME=${DB_NAME}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/stats:/app/stats
+
+  redis:
+    image: redis:7
+    container_name: doctorsoal_redis
+    restart: unless-stopped
+    networks:
+      - hamyar_default
+
+networks:
+  hamyar_default:
+    external: true
+  mysql_default:
+    external: true

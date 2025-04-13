@@ -1,0 +1,235 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # اسکریپت دیپلوی
+            set -e
+            
+            # تنظیم مسیرها
+            APP_DIR="/opt/doctorsoal"
+            
+            # ایجاد پوشه اصلی اگر وجود ندارد
+            mkdir -p $APP_DIR
+            cd $APP_DIR
+            
+            # پوشه‌های مورد نیاز
+            mkdir -p backend/uploads frontend
+            chmod -R 777 backend/uploads
+            
+            # کلون کردن پروژه اگر وجود ندارد یا آپدیت کردن آن
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/rokinio/doctorsoal-gm.git .
+            else
+              git fetch origin main
+              git reset --hard origin/main
+            fi
+            
+            # ایجاد فایل docker-compose.yml اگر وجود ندارد
+            if [ ! -f "docker-compose.yml" ]; then
+              cat > docker-compose.yml << 'EOL'
+version: "3"
+
+services:
+  doctorsoal_frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: doctorsoal_frontend:latest
+    container_name: doctorsoal_frontend
+    ports:
+      - "3200:80"
+    restart: unless-stopped
+    networks:
+      - hamyar_default
+
+  doctorsoal_backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: doctorsoal_backend:latest
+    container_name: doctorsoal_backend
+    ports:
+      - "3201:3333"
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - hamyar_default
+      - mysql_default
+    env_file:
+      - ./.env.production
+    environment:
+      - REDIS_HOST=doctorsoal_redis
+      - REDIS_PORT=6379
+      - HOST=0.0.0.0
+      - PORT=3333
+      - DB_CONNECTION=pg
+      - PG_HOST=mysql-mysql-1
+      - PG_PORT=3306
+      - PG_USER=${DB_USER}
+      - PG_PASSWORD=${DB_PASSWORD}
+      - PG_DB_NAME=${DB_NAME}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+  redis:
+    image: redis:7
+    container_name: doctorsoal_redis
+    restart: unless-stopped
+    networks:
+      - hamyar_default
+
+networks:
+  hamyar_default:
+    external: true
+  mysql_default:
+    external: true
+EOL
+            fi
+            
+            # ایجاد فایل .env.production اگر وجود ندارد
+            if [ ! -f ".env.production" ]; then
+              cat > .env.production << 'EOL'
+APP_KEY=rH552sQ6DDyRt7c2_Qd1Rr9HII4Km3MQ
+DB_USER=doctorsoal_user
+DB_PASSWORD=doctorsoal_password
+DB_NAME=doctorsoal_db
+N8N_WEBHOOK_URL=https://n8n.hamyar.ai/webhook/f360f7e9-2fc3-4ecc-9e35-4e5bd371752c
+EOL
+            fi
+            
+            # ایجاد Dockerfile برای فرانت‌اند اگر وجود ندارد
+            if [ ! -f "frontend/Dockerfile" ]; then
+              cat > frontend/Dockerfile << 'EOL'
+FROM node:18-alpine as builder
+
+WORKDIR /app
+
+# نصب پکیج‌های مورد نیاز
+RUN apk add --no-cache git python3 make g++
+
+# کپی فایل‌های پکیج
+COPY package.json yarn.lock ./
+
+# نصب وابستگی‌ها
+RUN yarn install
+
+# کپی بقیه فایل‌ها
+COPY . .
+
+# بیلد پروژه
+RUN yarn build
+
+# مرحله نهایی
+FROM nginx:alpine
+
+# کپی فایل‌های بیلد شده
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# کپی تنظیمات nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+EOL
+            fi
+            
+            # ایجاد Dockerfile برای بک‌اند اگر وجود ندارد
+            if [ ! -f "backend/Dockerfile" ]; then
+              cat > backend/Dockerfile << 'EOL'
+FROM node:18-alpine
+
+WORKDIR /app
+
+# نصب پکیج‌های مورد نیاز
+RUN apk add --no-cache git python3 make g++
+
+# کپی فایل‌های پکیج
+COPY package*.json ./
+
+# نصب وابستگی‌ها
+RUN npm install
+
+# کپی بقیه فایل‌ها
+COPY . .
+
+# بیلد پروژه
+RUN node ace build --production
+
+# کپی فایل‌های مورد نیاز
+RUN cp .env.example build/.env
+
+# ایجاد پوشه‌های مورد نیاز
+RUN mkdir -p uploads
+RUN chmod -R 777 uploads
+
+EXPOSE 3333
+
+CMD ["node", "build/server.js"]
+EOL
+            fi
+            
+            # ایجاد nginx.conf برای فرانت‌اند اگر وجود ندارد
+            if [ ! -f "frontend/nginx.conf" ]; then
+              cat > frontend/nginx.conf << 'EOL'
+server {
+    listen 80;
+    server_name localhost;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # فعال کردن gzip
+    gzip on;
+    gzip_types text/plain application/javascript application/x-javascript text/javascript text/xml text/css;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+EOL
+            fi
+            
+            # ویرایش config.js در فرانت‌اند
+            if [ -f "frontend/src/config.js" ]; then
+              cat > frontend/src/config.js << 'EOL'
+// frontend/src/config.js
+export const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? "http://localhost:3333/api" 
+  : `${window.location.protocol}//${window.location.host}/api`;
+EOL
+            fi
+            
+            # توقف و حذف کانتینرهای قبلی
+            echo "Stopping all related containers"
+            docker stop doctorsoal_frontend doctorsoal_backend doctorsoal_redis || true
+            docker rm doctorsoal_frontend doctorsoal_backend doctorsoal_redis || true
+            
+            # بیلد و اجرای کانتینرها
+            echo "Building and starting docker containers"
+            docker-compose -f docker-compose.yml up --build -d
+            
+            # بررسی وضعیت کانتینرها
+            echo "Checking container status"
+            docker ps | grep doctorsoal
+            
+            echo "Deployment completed!"
