@@ -29,6 +29,9 @@ Route.group(() => {
     "/raw-questions/:id/send-to-n8n",
     "RawQuestionsController.sendToN8n"
   );
+  Route.get("/dashboard-stats", "RawQuestionsController.dashboard");
+  Route.get("/weekly-stats", "RawQuestionsController.weeklyStats");
+  Route.get("/recent-questions", "RawQuestionsController.recentQuestions");
 
   // مسیرهای مربوط به سوالات خام
   Route.get("/raw-questions", "RawQuestionsController.index");

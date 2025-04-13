@@ -1,60 +1,118 @@
 <script>
-    import Icon from '@iconify/svelte';
-    import { navigate } from 'svelte-routing';
-    import { onMount } from 'svelte';
+  import Icon from '@iconify/svelte';
+  import { navigate } from 'svelte-routing';
+  import { onMount } from 'svelte';
+  import { API_BASE_URL } from '../config.js';
     
-    // داده‌های نمایشی برای داشبورد
-    let stats = [
-      { title: 'سوالات خام', count: 124, icon: 'mdi:file-question', color: 'bg-blue-500' },
-      { title: 'سوالات پردازش شده', count: 85, icon: 'mdi:file-check', color: 'bg-green-500' },
-      { title: 'سوالات منتشر شده', count: 67, icon: 'mdi:file-send', color: 'bg-purple-500' },
-      { title: 'بازدید کل', count: 12453, icon: 'mdi:eye', color: 'bg-yellow-500' }
-    ];
-    
-    // داده‌های نمودار (نمایشی)
-    let chartData = [
-      { day: 'شنبه', count: 12 },
-      { day: 'یکشنبه', count: 19 },
-      { day: 'دوشنبه', count: 14 },
-      { day: 'سه‌شنبه', count: 27 },
-      { day: 'چهارشنبه', count: 21 },
-      { day: 'پنج‌شنبه', count: 15 },
-      { day: 'جمعه', count: 8 }
-    ];
-    
-    // محاسبه حداکثر مقدار برای نمودار
-    let maxChartValue = Math.max(...chartData.map(item => item.count));
-    
-    // داده‌های نمایشی برای سوالات اخیر
-    let recentQuestions = [
-      { id: 1, title: 'مشکل پوستی و جوش صورت', category: 'پوست', status: 'raw', date: '۱۴۰۲/۰۲/۲۵' },
-      { id: 2, title: 'سردرد مزمن و مشکلات خواب', category: 'مغز و اعصاب', status: 'processed', date: '۱۴۰۲/۰۲/۲۴' },
-      { id: 3, title: 'آلرژی فصلی و آبریزش بینی', category: 'آلرژی', status: 'published', date: '۱۴۰۲/۰۲/۲۳' },
-      { id: 4, title: 'درد مفاصل زانو', category: 'ارتوپدی', status: 'processed', date: '۱۴۰۲/۰۲/۲۲' },
-      { id: 5, title: 'مشکل گوارشی و نفخ شکم', category: 'گوارش', status: 'published', date: '۱۴۰۲/۰۲/۲۱' }
-    ];
-    
-    // داده‌های نمایشی برای فعالیت‌های اخیر
-    let recentActivities = [
-      { id: 1, user: 'محمد حسینی', action: 'یک سوال جدید ثبت کرد', time: '۱۰ دقیقه پیش', icon: 'mdi:plus', iconColor: 'text-green-500' },
-      { id: 2, user: 'زهرا محمدی', action: 'یک سوال را پردازش کرد', time: '۳۰ دقیقه پیش', icon: 'mdi:check', iconColor: 'text-blue-500' },
-      { id: 3, user: 'علی اکبری', action: 'یک سوال را منتشر کرد', time: '۱ ساعت پیش', icon: 'mdi:cloud-upload', iconColor: 'text-purple-500' },
-      { id: 4, user: 'مریم احمدی', action: 'تنظیمات را بروزرسانی کرد', time: '۲ ساعت پیش', icon: 'mdi:cog', iconColor: 'text-gray-500' },
-      { id: 5, user: 'رضا کریمی', action: 'یک سوال را حذف کرد', time: '۳ ساعت پیش', icon: 'mdi:delete', iconColor: 'text-red-500' }
-    ];
-    
-    // حرکت به صفحه جزئیات سوال
-    function goToQuestion(id) {
-      navigate(`/edit-question/${id}`);
+  // داده‌های نمایشی برای داشبورد
+  let stats = [
+    { title: 'سوالات خام', count: 0, icon: 'mdi:file-question', color: 'bg-blue-500' },
+    { title: 'سوالات پردازش شده', count: 0, icon: 'mdi:file-check', color: 'bg-green-500' },
+    { title: 'سوالات منتشر شده', count: 0, icon: 'mdi:file-send', color: 'bg-purple-500' },
+    { title: 'بازدید کل', count: 0, icon: 'mdi:eye', color: 'bg-yellow-500' }
+  ];
+  let isLoading = true;
+  let error = null;
+
+  async function fetchDashboardStats() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/dashboard-stats`);
+      
+      if (!response.ok) {
+        throw new Error(`خطا در دریافت آمار داشبورد: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // به‌روزرسانی آمارها
+      stats[0].count = data.raw_count;
+      stats[1].count = data.processed_count;
+      stats[2].count = data.published_count;
+      stats[3].count = data.total_views;
+      
+      error = null;
+    } catch (err) {
+      console.error('خطا در دریافت آمار داشبورد:', err);
+      error = err.message;
+    } finally {
+      isLoading = false;
     }
+  }
+
+  // داده‌های نمودار
+  let chartData = [];
+  let maxChartValue = 0;
+  let isChartLoading = true;
+  let chartError = null;
+
+  // دریافت آمار هفتگی
+  async function fetchWeeklyStats() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/weekly-stats`);
+      
+      if (!response.ok) {
+        throw new Error(`خطا در دریافت آمار هفتگی: ${response.status}`);
+      }
+      
+      chartData = await response.json();
+      maxChartValue = Math.max(...chartData.map(item => item.count));
+      
+      chartError = null;
+    } catch (err) {
+      console.error('خطا در دریافت آمار هفتگی:', err);
+      chartError = err.message;
+    } finally {
+      isChartLoading = false;
+    }
+  }
     
-    onMount(() => {
-      // اینجا می‌توانید از API برای دریافت داده‌های واقعی استفاده کنید
-    });
-  </script>
+  // داده‌های سوالات اخیر
+  let recentQuestions = [];
+  let isRecentLoading = true;
+  let recentError = null;
+
+  // دریافت سوالات اخیر
+  async function fetchRecentQuestions() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/recent-questions`);
+      
+      if (!response.ok) {
+        throw new Error(`خطا در دریافت سوالات اخیر: ${response.status}`);
+      }
+      
+      recentQuestions = await response.json();
+      recentError = null;
+    } catch (err) {
+      console.error('خطا در دریافت سوالات اخیر:', err);
+      recentError = err.message;
+    } finally {
+      isRecentLoading = false;
+    }
+  }
+    
+  // حرکت به صفحه جزئیات سوال
+  function goToQuestion(id) {
+    navigate(`/edit-question/${id}`);
+  }
+    
+  onMount(() => {
+    fetchDashboardStats();
+    fetchRecentQuestions();
+    fetchWeeklyStats();
+  });
+</script>
   
-  <div class="container mx-auto">
-    <!-- کارت‌های آماری -->
+<div class="container mx-auto">
+  <!-- کارت‌های آماری -->
+  {#if isLoading}
+    <div class="flex justify-center items-center h-24">
+      <Icon icon="mdi:loading" class="text-3xl animate-spin text-indigo-600" />
+    </div>
+  {:else if error}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <p>{error}</p>
+    </div>
+  {:else}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       {#each stats as stat}
         <div class="bg-white rounded-lg shadow-md p-6 flex items-center">
@@ -68,44 +126,39 @@
         </div>
       {/each}
     </div>
-    
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <!-- نمودار آمار سوالات -->
-      <div class="bg-white rounded-lg shadow-md p-6">
-        <h2 class="text-lg font-semibold mb-4">آمار سوالات هفته اخیر</h2>
+  {/if}
+  
+  <div class="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-8">
+    <!-- نمودار آمار سوالات -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h2 class="text-lg font-semibold mb-4">آمار سوالات منتشر شده اخیر</h2>
+      
+      {#if isChartLoading}
+        <div class="flex justify-center items-center h-64">
+          <Icon icon="mdi:loading" class="text-3xl animate-spin text-indigo-600" />
+        </div>
+      {:else if chartError}
+        <div class="bg-red-100 text-red-700 p-4 rounded-lg h-64 flex items-center justify-center">
+          <p>{chartError}</p>
+        </div>
+      {:else if chartData.length === 0}
+        <div class="h-64 flex items-center justify-center text-gray-500">
+          <p>داده‌ای برای نمایش وجود ندارد</p>
+        </div>
+      {:else}
         <div class="h-64 flex items-end justify-between">
           {#each chartData as item}
             <div class="flex flex-col items-center" style="width: calc(100% / {chartData.length});">
-              <div class="bg-blue-500 w-full rounded-t-sm transition-all duration-500" style="height: {(item.count / maxChartValue) * 80}%"></div>
+              <div 
+                class="bg-blue-500 w-full rounded-t-sm transition-all duration-500" 
+                style="height: {maxChartValue > 0 ? (item.count / maxChartValue) * 80 : 0}%">
+              </div>
               <div class="mt-2 text-xs text-center">{item.day}</div>
               <div class="text-xs font-bold">{item.count}</div>
             </div>
           {/each}
         </div>
-      </div>
-      
-      <!-- فعالیت‌های اخیر -->
-      <div class="bg-white rounded-lg shadow-md p-6">
-        <h2 class="text-lg font-semibold mb-4">فعالیت‌های اخیر</h2>
-        <div class="space-y-4">
-          {#each recentActivities as activity}
-            <div class="flex items-start">
-              <div class={`${activity.iconColor} mt-1`}>
-                <Icon icon={activity.icon} class="text-lg" />
-              </div>
-              <div class="mr-3 flex-1">
-                <div class="flex justify-between">
-                  <div>
-                    <span class="font-medium">{activity.user}</span>
-                    <span class="text-gray-600 mr-1">{activity.action}</span>
-                  </div>
-                  <span class="text-sm text-gray-500">{activity.time}</span>
-                </div>
-              </div>
-            </div>
-          {/each}
-        </div>
-      </div>
+      {/if}
     </div>
     
     <!-- سوالات اخیر -->
@@ -120,61 +173,79 @@
           <Icon icon="mdi:chevron-left" class="mr-1" />
         </button>
       </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                عنوان
-              </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                دسته‌بندی
-              </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                وضعیت
-              </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                تاریخ
-              </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                عملیات
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            {#each recentQuestions as question}
-              <tr class="hover:bg-gray-50 cursor-pointer" on:click={() => goToQuestion(question.id)}>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900">{question.title}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-500">{question.category}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                    ${question.status === 'raw' ? 'bg-yellow-100 text-yellow-800' : 
-                      question.status === 'processed' ? 'bg-blue-100 text-blue-800' : 
-                      'bg-green-100 text-green-800'}`}>
-                    {question.status === 'raw' ? 'خام' : 
-                     question.status === 'processed' ? 'پردازش شده' : 
-                     'منتشر شده'}
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {question.date}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
-                  <button 
-                    on:click|stopPropagation={() => goToQuestion(question.id)}
-                    class="text-indigo-600 hover:text-indigo-900"
-                  >
-                    <Icon icon="mdi:pencil" class="text-lg" />
-                  </button>
-                </td>
+      
+      {#if isRecentLoading}
+        <div class="flex justify-center items-center h-40">
+          <Icon icon="mdi:loading" class="text-3xl animate-spin text-indigo-600" />
+        </div>
+      {:else if recentError}
+        <div class="bg-red-100 text-red-700 p-4 rounded-lg">
+          <p>{recentError}</p>
+        </div>
+      {:else if recentQuestions.length === 0}
+        <div class="p-8 text-center text-gray-500">
+          <p>هیچ سوالی یافت نشد</p>
+        </div>
+      {:else}
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  عنوان
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  دسته‌بندی
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  وضعیت
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  تاریخ
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  عملیات
+                </th>
               </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              {#each recentQuestions as question}
+                <tr class="hover:bg-gray-50 cursor-pointer" on:click={() => goToQuestion(question.id)}>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">{question.title}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-500">{question.category}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                      ${question.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                        question.status === 'processing' ? 'bg-blue-100 text-blue-800' : 
+                        question.status === 'published' ? 'bg-green-100 text-green-800' :
+                        'bg-gray-100 text-gray-800'}`}>
+                      {question.status === 'pending' ? 'خام' : 
+                       question.status === 'processing' ? 'پردازش شده' : 
+                       question.status === 'published' ? 'منتشر شده' : 
+                       question.status}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {question.date}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
+                    <button 
+                      on:click|stopPropagation={() => goToQuestion(question.id)}
+                      class="text-indigo-600 hover:text-indigo-900"
+                    >
+                      <Icon icon="mdi:pencil" class="text-lg" />
+                    </button>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
     </div>
   </div>
+</div>

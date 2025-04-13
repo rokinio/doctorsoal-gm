@@ -208,4 +208,116 @@ export default class RawQuestionsController {
       return response.notFound({ error: "سوال مورد نظر یافت نشد" });
     }
   }
+
+  // در فایل backend/app/Controllers/Http/RawQuestionsController.ts
+  // این متد را اضافه کنید:
+
+  public async dashboard({ response }: HttpContextContract) {
+    try {
+      // تعداد سوالات خام
+      const rawCount = await RawQuestion.query()
+        .where("status", "pending")
+        .count("* as total");
+
+      // تعداد سوالات پردازش شده
+      const processedCount = await RawQuestion.query()
+        .where("status", "processing")
+        .count("* as total");
+
+      // تعداد سوالات منتشر شده
+      const publishedCount = await RawQuestion.query()
+        .where("status", "published")
+        .count("* as total");
+
+      // مجموع بازدیدها
+      const totalViews = await RawQuestion.query().sum(
+        "original_viewer_count as total"
+      );
+
+      return response.ok({
+        raw_count: parseInt(rawCount[0].$extras.total || "0"),
+        processed_count: parseInt(processedCount[0].$extras.total || "0"),
+        published_count: parseInt(publishedCount[0].$extras.total || "0"),
+        total_views: parseInt(totalViews[0].$extras.total || "0"),
+      });
+    } catch (error) {
+      return response.internalServerError({
+        error: "خطا در دریافت آمار داشبورد",
+        details: error.message,
+      });
+    }
+  }
+  // در فایل backend/app/Controllers/Http/RawQuestionsController.ts
+  // این متد را اضافه کنید:
+
+  public async weeklyStats({ response }: HttpContextContract) {
+    try {
+      const days = [
+        "شنبه",
+        "یکشنبه",
+        "دوشنبه",
+        "سه‌شنبه",
+        "چهارشنبه",
+        "پنج‌شنبه",
+        "جمعه",
+      ];
+      const weeklyData = [];
+
+      // برای هر روز هفته، تعداد سوالات آن روز را محاسبه می‌کنیم
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+
+        // تبدیل تاریخ به فرمت مناسب برای مقایسه در دیتابیس
+        const formattedDate = date.toISOString().split("T")[0];
+
+        // شمارش سوالات ایجاد شده در این روز
+        const count = await RawQuestion.query()
+          .whereRaw("DATE(created_at) = ?", [formattedDate])
+          .count("* as total");
+
+        weeklyData.push({
+          day: days[6 - i], // تبدیل شاخص به روز هفته فارسی
+          count: parseInt(count[0].$extras.total || "0"),
+        });
+      }
+
+      return response.ok(weeklyData);
+    } catch (error) {
+      return response.internalServerError({
+        error: "خطا در دریافت آمار هفتگی",
+        details: error.message,
+      });
+    }
+  }
+  // در فایل backend/app/Controllers/Http/RawQuestionsController.ts
+  // این متد را اضافه کنید:
+
+  public async recentQuestions({ response }: HttpContextContract) {
+    try {
+      // دریافت ۵ سوال اخیر
+      const recentQuestions = await RawQuestion.query()
+        .preload("category")
+        .orderBy("created_at", "desc")
+        .limit(5);
+
+      // تبدیل داده‌ها به فرمت مورد نیاز
+      const formattedQuestions = recentQuestions.map((q) => {
+        return {
+          id: q.id,
+          title: q.question,
+          category: q.category ? q.category.name : "بدون دسته‌بندی",
+          status: q.status,
+          date: q.createdAt.toFormat("yyyy/MM/dd"),
+        };
+      });
+
+      return response.ok(formattedQuestions);
+    } catch (error) {
+      return response.internalServerError({
+        error: "خطا در دریافت سوالات اخیر",
+        details: error.message,
+      });
+    }
+  }
 }
