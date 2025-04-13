@@ -12,14 +12,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to Server
-        uses: appleboy/ssh-action@master
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            # اسکریپت دیپلوی
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Setup SSH config for Jump Host
+        run: |
+          mkdir -p ~/.ssh
+          echo -e "Host jumphost\n\tHostName 135.181.225.225\n\tUser adminnginx\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+          echo -e "Host internalserver\n\tHostName 192.168.121.110\n\tUser adminapp\n\tProxyJump jumphost\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      - name: Deploy to Internal Server via Jump Host
+        run: |
+          ssh internalserver '
             set -e
             
             # تنظیم مسیرها
@@ -43,7 +50,7 @@ jobs:
             
             # ایجاد فایل docker-compose.yml اگر وجود ندارد
             if [ ! -f "docker-compose.yml" ]; then
-              cat > docker-compose.yml << 'EOL'
+              cat > docker-compose.yml << '"'"'EOL
 version: "3"
 
 services:
@@ -107,7 +114,7 @@ EOL
             
             # ایجاد فایل .env.production اگر وجود ندارد
             if [ ! -f ".env.production" ]; then
-              cat > .env.production << 'EOL'
+              cat > .env.production << '"'"'EOL
 APP_KEY=rH552sQ6DDyRt7c2_Qd1Rr9HII4Km3MQ
 DB_USER=doctorsoal_user
 DB_PASSWORD=doctorsoal_password
@@ -118,7 +125,7 @@ EOL
             
             # ایجاد Dockerfile برای فرانت‌اند اگر وجود ندارد
             if [ ! -f "frontend/Dockerfile" ]; then
-              cat > frontend/Dockerfile << 'EOL'
+              cat > frontend/Dockerfile << '"'"'EOL
 FROM node:18-alpine as builder
 
 WORKDIR /app
@@ -155,7 +162,7 @@ EOL
             
             # ایجاد Dockerfile برای بک‌اند اگر وجود ندارد
             if [ ! -f "backend/Dockerfile" ]; then
-              cat > backend/Dockerfile << 'EOL'
+              cat > backend/Dockerfile << '"'"'EOL
 FROM node:18-alpine
 
 WORKDIR /app
@@ -190,7 +197,7 @@ EOL
             
             # ایجاد nginx.conf برای فرانت‌اند اگر وجود ندارد
             if [ ! -f "frontend/nginx.conf" ]; then
-              cat > frontend/nginx.conf << 'EOL'
+              cat > frontend/nginx.conf << '"'"'EOL
 server {
     listen 80;
     server_name localhost;
@@ -211,9 +218,9 @@ EOL
             
             # ویرایش config.js در فرانت‌اند
             if [ -f "frontend/src/config.js" ]; then
-              cat > frontend/src/config.js << 'EOL'
+              cat > frontend/src/config.js << '"'"'EOL
 // frontend/src/config.js
-export const API_BASE_URL = window.location.hostname === 'localhost' 
+export const API_BASE_URL = window.location.hostname === "localhost" 
   ? "http://localhost:3333/api" 
   : `${window.location.protocol}//${window.location.host}/api`;
 EOL
@@ -233,3 +240,4 @@ EOL
             docker ps | grep doctorsoal
             
             echo "Deployment completed!"
+          '
