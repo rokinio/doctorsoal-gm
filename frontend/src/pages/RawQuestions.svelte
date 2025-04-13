@@ -39,7 +39,8 @@ let statuses = [
     category: '',
     site: '',
     department: '',
-    status: ''
+    status: '',
+    conversationCount: '' 
   };
 // این تابع را بعد از تابع fetchQuestions اضافه کنید
 async function fetchCategories() {
@@ -65,17 +66,19 @@ async function fetchQuestions() {
 
   try {
     // ساخت پارامترهای URL برای فیلترها
-    const searchParams = new URLSearchParams({
-      page: currentPage,
-      limit: limit
-    });
+    // ساخت پارامترهای URL برای فیلترها
+const searchParams = new URLSearchParams({
+  page: currentPage,
+  limit: limit
+});
 
-    if (filters.id) searchParams.append('id', filters.id);
-    if (filters.subject) searchParams.append('search', filters.subject);
-    if (filters.category) searchParams.append('category_id', filters.category);
-    if (filters.status) searchParams.append('status', filters.status); // اضافه کردن این خط
+if (filters.id) searchParams.append('id', filters.id);
+if (filters.subject) searchParams.append('search', filters.subject);
+if (filters.category) searchParams.append('category_id', filters.category);
+if (filters.status) searchParams.append('status', filters.status);
+if (filters.conversationCount) searchParams.append('conversation_count', filters.conversationCount); // تغییر به conversation_count
 
-    const response = await fetch(`${API_BASE_URL}/raw-questions?${searchParams.toString()}`);
+const response = await fetch(`${API_BASE_URL}/raw-questions?${searchParams.toString()}`);
 
     if (!response.ok) {
       throw new Error(`خطا در دریافت اطلاعات: ${response.status}`);
@@ -108,9 +111,27 @@ async function fetchQuestions() {
   // اعمال فیلترها به صورت محلی
 // اعمال فیلترها به صورت محلی
 function applyFilters() {
+  fetchQuestions();
   if (!questions) return; // اطمینان از وجود داده
 
   filteredQuestions = questions.filter(q => {
+    // بررسی فیلتر تعداد مکالمه
+    let matchesConversationCount = true;
+    if (filters.conversationCount !== '') {
+      const conversationLength = q.conversation && Array.isArray(q.conversation) ? q.conversation.length : 0;
+      
+      if (filters.conversationCount === 'more-than-2') {
+        // بیشتر از 2 پیام
+        matchesConversationCount = conversationLength > 2;
+      } else if (filters.conversationCount === '2') {
+        // دقیقاً 2 پیام
+        matchesConversationCount = conversationLength === 2;
+      } else if (filters.conversationCount === 'less-than-2') {
+        // کمتر از 2 پیام
+        matchesConversationCount = conversationLength < 2;
+      }
+    }
+    
     return (
       (filters.id === '' || (q.id !== undefined && q.id !== null && q.id.toString().includes(filters.id))) &&
       (filters.trackingCode === '' || (q.tracking_code !== undefined && q.tracking_code !== null && q.tracking_code.toLowerCase().includes(filters.trackingCode.toLowerCase()))) &&
@@ -118,7 +139,8 @@ function applyFilters() {
       (filters.category === '' || (q.category_id !== undefined && q.category_id !== null && q.category_id.toString() === filters.category.toString())) &&
       (filters.site === '' || (q.source !== undefined && q.source !== null && q.source.toLowerCase().includes(filters.site.toLowerCase()))) &&
       (filters.department === '' || (q.category?.name !== undefined && q.category?.name !== null && q.category?.name.toLowerCase().includes(filters.department.toLowerCase()))) &&
-      (filters.status === '' || (q.status !== undefined && q.status !== null && q.status === filters.status))
+      (filters.status === '' || (q.status !== undefined && q.status !== null && q.status === filters.status)) &&
+      matchesConversationCount
     );
   });
 }
@@ -132,7 +154,8 @@ function applyFilters() {
       category: '',
       site: '',
       department: '',
-      status: ''
+      status: '',
+      conversationCount: ''
     };
     
     // Make sure questions array exists before trying to copy it
@@ -382,6 +405,28 @@ async function sendToN8n(id) {
           class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
         />
       </div>
+      <div class="w-full md:w-1/2 lg:w-1/6 px-2 mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">تعداد مکالمه</label>
+        <select
+          bind:value={filters.conversationCount}
+          on:change={applyFilters}
+          class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+        >
+          <option value="">همه</option>
+          <option value="more-than-2">بیشتر از 2 پیام</option>
+          <option value="2">دقیقاً 2 پیام</option>
+          <option value="less-than-2">کمتر از 2 پیام</option>
+        </select>
+      </div>
+      <div class="w-full md:w-1/2 lg:w-1/6 px-2 mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">بخش</label>
+        <input
+          type="text"
+          bind:value={filters.department}
+          on:input={applyFilters}
+          class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+        />
+      </div>
     </div>
     <div class="flex justify-end">
       <button
@@ -427,6 +472,9 @@ async function sendToN8n(id) {
                 وضعیت
               </th>
               <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                مکالمه
+              </th>
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 عملیات
               </th>
             </tr>
@@ -456,6 +504,14 @@ async function sendToN8n(id) {
                      question.status === 'processing' ? 'در حال پردازش' :
                      question.status === 'published' ? 'منتشر شده' :
                      question.status}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                    ${question.conversation && Array.isArray(question.conversation) && question.conversation.length > 1 ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}`}>
+                    {question.conversation && Array.isArray(question.conversation) && question.conversation.length > 1 ? 
+                      `${question.conversation.length} پیام` : 
+                      'بدون مکالمه'}
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">

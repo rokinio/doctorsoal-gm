@@ -15,6 +15,7 @@ export default class RawQuestionsController {
       const status = request.input("status");
       const categoryId = request.input("category_id");
       const search = request.input("search");
+      const hasConversation = request.input("has_conversation"); // پارامتر جدید برای فیلتر مکالمه
 
       const query = RawQuestion.query().preload("category"); // پیش‌بارگذاری اطلاعات دسته‌بندی
 
@@ -29,6 +30,19 @@ export default class RawQuestionsController {
 
       if (search) {
         query.where("question", "ILIKE", `%${search}%`);
+      }
+      const conversationCount = request.input("conversation_count");
+      if (conversationCount) {
+        if (conversationCount === "more-than-2") {
+          // فیلتر برای سوالاتی که بیش از 2 پیام دارند
+          query.whereRaw("jsonb_array_length(conversation) > 2");
+        } else if (conversationCount === "2") {
+          // فیلتر برای سوالاتی که دقیقاً 2 پیام دارند
+          query.whereRaw("jsonb_array_length(conversation) = 2");
+        } else if (conversationCount === "less-than-2") {
+          // فیلتر برای سوالاتی که کمتر از 2 پیام دارند
+          query.whereRaw("jsonb_array_length(conversation) < 2");
+        }
       }
 
       // اضافه کردن مرتب‌سازی بر اساس آیدی به صورت نزولی
