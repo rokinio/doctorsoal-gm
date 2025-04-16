@@ -1,32 +1,41 @@
-# frontend/Dockerfile
-FROM node:18-alpine as builder
+# مرحله ساخت
+FROM node:16-alpine AS builder
 
 WORKDIR /app
 
 # نصب پکیج‌های مورد نیاز
-RUN apk add --no-cache git python3 make g++
+COPY package*.json ./
+RUN npm install
 
-# کپی فایل‌های پکیج
-COPY package.json yarn.lock ./
-
-# نصب وابستگی‌ها
-RUN yarn install
-
-# کپی بقیه فایل‌ها
+# کپی همه فایل‌های پروژه
 COPY . .
 
+# دریافت متغیرهای محیطی در زمان ساخت
+ARG NODE_ENV
+ARG API_URL
+ENV NODE_ENV=${NODE_ENV}
+ENV API_URL=${API_URL}
+
 # بیلد پروژه
-RUN yarn build
+RUN npm run build
 
-# مرحله نهایی
-FROM nginx:alpine
+# مرحله اجرا
+FROM node:16-alpine AS runner
 
-# کپی فایل‌های بیلد شده
-COPY --from=builder /app/dist /usr/share/nginx/html
+WORKDIR /app
 
-# کپی تنظیمات nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# کپی فایل‌های ساخته شده از مرحله قبل
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package*.json ./
 
-EXPOSE 80
+# نصب فقط پکیج‌های مورد نیاز تولید
+RUN npm ci --only=production
 
-CMD ["nginx", "-g", "daemon off;"]
+# تنظیم متغیرهای محیطی برای زمان اجرا
+ENV NODE_ENV=${NODE_ENV}
+ENV API_URL=${API_URL}
+
+EXPOSE 3000
+
+# دستور راه‌اندازی برنامه
+CMD ["npm", "run", "start"]

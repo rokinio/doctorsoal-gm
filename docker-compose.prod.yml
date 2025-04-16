@@ -1,61 +1,72 @@
 version: "3"
 
 services:
-  doctorsoal_frontend:
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: https://panel.doctorsoal.com/api
+        NODE_ENV: production
+        API_URL: https://panel.doctorsoal.com/api
     image: doctorsoal_frontend:latest
     container_name: doctorsoal_frontend
     ports:
-      - "3200:80"
+      - "3100:3000"
     restart: unless-stopped
     networks:
       - hamyar_default
 
-  doctorsoal_backend:
+  backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     image: doctorsoal_backend:latest
     container_name: doctorsoal_backend
     ports:
-      - "3201:3333"
+      - "3333:3333"
     restart: unless-stopped
     depends_on:
-      - redis
+      - postgres
     networks:
       - hamyar_default
-      - mysql_default
+      - postgres_default
     env_file:
-      - ./.env.production
+      - ./backend/.env.production
     environment:
-      - REDIS_HOST=doctorsoal_redis
-      - REDIS_PORT=6379
-      - HOST=0.0.0.0
       - PORT=3333
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - APP_KEY=rH552sQ6DDyRt7c2_Qd1Rr9HII4Km3MQ
+      - DRIVE_DISK=local
       - DB_CONNECTION=pg
-      - PG_HOST=mysql-mysql-1
-      - PG_PORT=3306
-      - PG_USER=${DB_USER}
-      - PG_PASSWORD=${DB_PASSWORD}
-      - PG_DB_NAME=${DB_NAME}
-      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
+      - PG_HOST=postgres
+      - PG_PORT=5432
+      - PG_USER=postgres
+      - PG_PASSWORD=doctorsoal_prod
+      - PG_DB_NAME=doctorsoal
+      - API_URL=https://panel.doctorsoal.com/api
+      - FRONTEND_URL=https://panel.doctorsoal.com
     volumes:
-      - ./backend/uploads:/app/uploads
-      - ./backend/stats:/app/stats
+      - ./backend/tmp:/app/tmp
 
-  redis:
-    image: redis:7
-    container_name: doctorsoal_redis
+  postgres:
+    image: postgres:14
+    container_name: doctorsoal_postgres
     restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=doctorsoal_prod
+      - POSTGRES_DB=doctorsoal
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - hamyar_default
 
 networks:
   hamyar_default:
     external: true
-  mysql_default:
+  postgres_default:
     external: true
+
+volumes:
+  postgres_data:

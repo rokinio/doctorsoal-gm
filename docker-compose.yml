@@ -1,46 +1,67 @@
 version: "3"
 
 services:
-  doctorsoal_frontend:
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NODE_ENV: development
+        API_URL: http://localhost:3333
     image: doctorsoal_frontend:latest
     container_name: doctorsoal_frontend
     ports:
-      - "3200:80"
-    restart: unless-stopped
+      - "3100:3000"
     networks:
-      - hamyar_default
+      - app_network
+    environment:
+      - NODE_ENV=development
+      - API_URL=http://backend:3333
 
-  doctorsoal_backend:
+  backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     image: doctorsoal_backend:latest
     container_name: doctorsoal_backend
     ports:
-      - "3201:3333"
-    restart: unless-stopped
+      - "3333:3333"
     depends_on:
-      - redis
+      - postgres
     networks:
-      - hamyar_default
-      - mysql_default
-    env_file:
-      - ./.env.production
+      - app_network
+    environment:
+      - PORT=3333
+      - HOST=0.0.0.0
+      - NODE_ENV=development
+      - APP_KEY=rH552sQ6DDyRt7c2_Qd1Rr9HII4Km3MQ
+      - DRIVE_DISK=local
+      - DB_CONNECTION=pg
+      - PG_HOST=postgres
+      - PG_PORT=5432
+      - PG_USER=postgres
+      - PG_PASSWORD=doctorsoal
+      - PG_DB_NAME=doctorsoal
     volumes:
-      - ./backend/uploads:/app/uploads
+      - ./backend/tmp:/app/tmp
 
-  redis:
-    image: redis:7
-    container_name: doctorsoal_redis
-    restart: unless-stopped
+  postgres:
+    image: postgres:14
+    container_name: doctorsoal_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=doctorsoal
+      - POSTGRES_DB=doctorsoal
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
-      - hamyar_default
+      - app_network
 
 networks:
-  hamyar_default:
-    external: true
-  mysql_default:
-    external: true
+  app_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

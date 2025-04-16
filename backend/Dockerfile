@@ -1,30 +1,23 @@
-# backend/Dockerfile
-FROM node:18-alpine
+FROM node:16-alpine
 
 WORKDIR /app
 
 # نصب پکیج‌های مورد نیاز
-RUN apk add --no-cache git python3 make g++
-
-# کپی فایل‌های پکیج
 COPY package*.json ./
-
-# نصب وابستگی‌ها
 RUN npm install
 
-# کپی بقیه فایل‌ها
+# کپی همه فایل‌های پروژه
 COPY . .
 
 # بیلد پروژه
 RUN node ace build --production
 
-# کپی فایل‌های مورد نیاز
-RUN cp .env.example build/.env
-
-# ایجاد پوشه‌های مورد نیاز
-RUN mkdir -p uploads
-RUN chmod -R 777 uploads
+# در محیط تولید فایل‌های اضافی را پاک می‌کنیم
+RUN if [ "$NODE_ENV" = "production" ]; then \
+      rm -rf src tmp tests \
+    ; fi
 
 EXPOSE 3333
 
-CMD ["node", "build/server.js"]
+# دستور راه‌اندازی برنامه
+CMD ["node", "server.js"]

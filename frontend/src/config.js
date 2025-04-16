@@ -1,5 +1,5 @@
 // frontend/src/config.js
 export const API_BASE_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:3333/api"
-    : `${window.location.protocol}//${window.location.host}/api`;
+  process.env.NODE_ENV === "production"
+    ? "https://panel.doctorsoal.com/api"
+    : "http://localhost:3333";
