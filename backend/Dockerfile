@@ -9,11 +9,14 @@ RUN npm install
 # کپی بقیه فایل‌ها
 COPY . .
 
-# ساخت پروژه و کپی فایل‌های ساخته شده به مسیر اصلی
+# ساخت پروژه
 RUN export NODE_OPTIONS="--max-old-space-size=4096" && node ace build --production --ignore-ts-errors
-RUN cp -r build/* .
+
+# تغییر دایرکتوری کاری به پوشه build
+WORKDIR /app/build
 
 EXPOSE 3333
 
-# اجرای برنامه با استفاده از صریح از مسیر فایل server.js
+# اجرای برنامه با استفاده از server.js در پوشه build
 CMD ["node", "server.js"]
+

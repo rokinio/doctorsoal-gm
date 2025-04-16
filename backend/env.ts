@@ -11,7 +11,7 @@ export default Env.rules({
 
   // تنظیمات دیتابیس
   DB_CONNECTION: Env.schema.string(),
-  PG_HOST: Env.schema.string({ format: "host" }),
+  PG_HOST: Env.schema.string(),
   PG_PORT: Env.schema.number(),
   PG_USER: Env.schema.string(),
   PG_PASSWORD: Env.schema.string.optional(),
