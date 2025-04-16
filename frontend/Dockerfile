@@ -1,7 +1,10 @@
 # مرحله ساخت
-FROM node:16-alpine AS builder
+FROM node:18-alpine AS builder
 
 WORKDIR /app
+
+# افزودن متغیر محیطی برای رفع مشکل crypto
+ENV NODE_OPTIONS=--openssl-legacy-provider
 
 # نصب پکیج‌های مورد نیاز
 COPY package*.json ./
@@ -20,7 +23,7 @@ ENV API_URL=${API_URL}
 RUN npm run build
 
 # مرحله اجرا
-FROM node:16-alpine AS runner
+FROM node:18-alpine AS runner
 
 WORKDIR /app
 
