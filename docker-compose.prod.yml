@@ -14,7 +14,7 @@ services:
       - "3100:3000"
     restart: unless-stopped
     networks:
-      - hamyar_default
+      - postgres_network
 
   backend:
     build:
@@ -25,48 +25,23 @@ services:
     ports:
       - "3333:3333"
     restart: unless-stopped
-    depends_on:
-      - postgres
     networks:
-      - hamyar_default
-      - postgres_default
+      - postgres_network
     env_file:
-      - ./backend/.env.production
+      - .env.production
     environment:
       - PORT=3333
       - HOST=0.0.0.0
       - NODE_ENV=production
-      - APP_KEY=rH552sQ6DDyRt7c2_Qd1Rr9HII4Km3MQ
-      - DRIVE_DISK=local
       - DB_CONNECTION=pg
-      - PG_HOST=postgres
+      - PG_HOST=doctorsoal_postgres
       - PG_PORT=5432
       - PG_USER=postgres
-      - PG_PASSWORD=doctorsoal_prod
+      - PG_PASSWORD=zkw8gxy1qga.BGZ6qzv
       - PG_DB_NAME=doctorsoal
-      - API_URL=https://panel.doctorsoal.com/api
-      - FRONTEND_URL=https://panel.doctorsoal.com
     volumes:
       - ./backend/tmp:/app/tmp
 
-  postgres:
-    image: postgres:14
-    container_name: doctorsoal_postgres
-    restart: unless-stopped
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=doctorsoal_prod
-      - POSTGRES_DB=doctorsoal
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - hamyar_default
-
 networks:
-  hamyar_default:
+  postgres_network:
     external: true
-  postgres_default:
-    external: true
-
-volumes:
-  postgres_data:
