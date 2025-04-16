@@ -1,6 +1,4 @@
 node_modules
-.env
-.env.production
 backend/tmp
 backend/build
 frontend/dist

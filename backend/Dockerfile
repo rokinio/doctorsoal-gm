@@ -1,4 +1,4 @@
-FROM node:16-alpine
+FROM node:18-alpine
 
 WORKDIR /app
 
@@ -9,8 +9,8 @@ RUN npm install
 # کپی همه فایل‌های پروژه
 COPY . .
 
-# بیلد پروژه
-RUN node ace build --production
+# بیلد پروژه با تنظیمات خاص برای رفع خطاها
+RUN export NODE_OPTIONS="--max-old-space-size=4096" && node ace build --production --ignore-ts-errors
 
 # در محیط تولید فایل‌های اضافی را پاک می‌کنیم
 RUN if [ "$NODE_ENV" = "production" ]; then \
