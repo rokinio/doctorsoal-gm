@@ -2,22 +2,18 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# نصب پکیج‌های مورد نیاز
+# کپی فایل‌های package.json
 COPY package*.json ./
 RUN npm install
 
-# کپی همه فایل‌های پروژه
+# کپی بقیه فایل‌ها
 COPY . .
 
-# بیلد پروژه با تنظیمات خاص برای رفع خطاها
+# ساخت پروژه و کپی فایل‌های ساخته شده به مسیر اصلی
 RUN export NODE_OPTIONS="--max-old-space-size=4096" && node ace build --production --ignore-ts-errors
-
-# در محیط تولید فایل‌های اضافی را پاک می‌کنیم
-RUN if [ "$NODE_ENV" = "production" ]; then \
-      rm -rf src tmp tests \
-    ; fi
+RUN cp -r build/* .
 
 EXPOSE 3333
 
-# دستور راه‌اندازی برنامه
+# اجرای برنامه با استفاده از صریح از مسیر فایل server.js
 CMD ["node", "server.js"]
