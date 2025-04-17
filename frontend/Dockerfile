@@ -12,22 +12,16 @@ COPY . .
 # ساخت پروژه
 RUN npm run build
 
-# مرحله دوم
-FROM node:18-alpine AS runner
+# مرحله دوم - از nginx برای سرو کردن فایل‌های استاتیک استفاده می‌کنیم
+FROM nginx:alpine AS runner
 
-WORKDIR /app
+# کپی فایل‌های ساخته شده به مسیر مناسب nginx
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# کپی فایل‌های ساخته شده
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
+# کپی فایل پیکربندی nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# اضافه کردن اسکریپت start به package.json
-RUN npm pkg set scripts.start="vite preview --host 0.0.0.0 --port 3000"
+EXPOSE 80
 
-# نصب فقط پکیج‌های مورد نیاز تولید
-RUN npm ci --only=production
-
-EXPOSE 3000
-
-# اجرای برنامه
-CMD ["npm", "run", "start"]
+# اجرای nginx
+CMD ["nginx", "-g", "daemon off;"]

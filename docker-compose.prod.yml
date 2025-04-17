@@ -1,57 +1,82 @@
-# docker-compose.prod.yml
-
-version: "3.7" # استفاده از ورژن جدیدتر مثل 3.7 امکانات بیشتری دارد ولی 3 هم کار می‌کند
+version: "3.8"
 
 services:
-  # --- سرویس فرانت‌اند ---
-  frontend:
-    build:
-      context: ./frontend # مسیر پوشه سورس فرانت‌اند
-      dockerfile: Dockerfile # نام Dockerfile فرانت‌اند
-      args: # آرگومان‌هایی که موقع ساخت ایمیج به Dockerfile پاس داده می‌شوند
-        NODE_ENV: production
-        API_URL: https://panel.doctorsoal.com/api # آدرس API بک‌اند برای استفاده در فرانت‌اند
-    image: doctorsoal_frontend:latest # نام و تگ ایمیجی که ساخته می‌شود
-    container_name: doctorsoal_frontend # نام کانتینری که اجرا می‌شود
-    # ports: # پورت‌ها رو کامنت کردم چون Nginx کار پراکسی رو انجام میده
-    #   - "3100:3000" # اگر Nginx روی 80/443 درخواست‌ها رو می‌گیره، دیگه نیازی به این نیست
-    restart: unless-stopped # کانتینر در صورت خطا یا ری‌استارت شدن سرور، دوباره اجرا شود
-    networks: # شبکه‌هایی که این سرویس به آن‌ها متصل می‌شود
-      # - postgres_network # حذف شد: فرانت‌اند معمولاً مستقیم به دیتابیس وصل نمی‌شود
-      - nginx-proxy_proxy-network # اضافه شد: اتصال به شبکه پراکسی برای ارتباط با Nginx
+  postgres:
+    image: postgres:13
+    container_name: doctorsoal_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: zkw8gxy1qga.BGZ6qzv
+      POSTGRES_DB: doctorsoal
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+    restart: always
 
-  # --- سرویس بک‌اند ---
   backend:
     build:
-      context: ./backend # مسیر پوشه سورس بک‌اند
-      dockerfile: Dockerfile # نام Dockerfile بک‌اند
-    image: doctorsoal_backend:latest # نام و تگ ایمیج بک‌اند
-    container_name: doctorsoal_backend # نام کانتینر بک‌اند
-    # ports: # پورت‌ها رو کامنت کردم چون Nginx کار پراکسی رو انجام میده
-    #   - "3333:3333" # Nginx از طریق شبکه داخلی به پورت 3333 وصل میشه
-    restart: unless-stopped
-    networks: # شبکه‌هایی که این سرویس به آن‌ها متصل می‌شود
-      - postgres_network # باقی ماند: برای اتصال بک‌اند به دیتابیس
-      - nginx-proxy_proxy-network # اضافه شد: اتصال به شبکه پراکسی برای ارتباط با Nginx (از طریق /api/)
-    env_file: # خواندن متغیرهای محیطی از فایل
-      - ./backend/.env.production
-    environment: # تعریف یا بازنویسی متغیرهای محیطی
-      - PORT=3333 # پورتی که اپلیکیشن بک‌اند داخل کانتینر روی آن گوش می‌دهد
-      - HOST=0.0.0.0 # باعث میشه اپلیکیشن به همه IP های داخل کانتینر گوش بده
-      - NODE_ENV=production
-      # --- تنظیمات اتصال به دیتابیس ---
-      - DB_CONNECTION=pg
-      - PG_HOST=doctorsoal_postgres # نام سرویس/کانتینر دیتابیس در شبکه postgres_network
-      - PG_PORT=5432
-      - PG_USER=postgres
-      - PG_PASSWORD=zkw8gxy1qga.BGZ6qzv # هشدار: بهتر است پسوردها از طریق Docker Secrets مدیریت شوند
-      - PG_DB_NAME=doctorsoal
-    volumes: # اتصال مسیر از هاست به داخل کانتینر
-      - ./backend/tmp:/app/tmp # مثال: برای فایل‌های آپلودی موقت
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: doctorsoal_backend
+    environment:
+      PORT: 3333
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      APP_KEY: rH552sQ6DDyRt7c2_Qd1Rr9HII4Km3MQ
+      APP_NAME: DoctorSoal
+      DRIVE_DISK: local
+      DB_CONNECTION: pg
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_USER: postgres
+      PG_PASSWORD: zkw8gxy1qga.BGZ6qzv
+      PG_DB_NAME: doctorsoal
+      N8N_WEBHOOK_URL: https://n8n.hamyar.ai/webhook
+    depends_on:
+      - postgres
+    networks:
+      - app_network
+    restart: always
 
-# --- تعریف شبکه‌ها ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: doctorsoal_frontend
+    networks:
+      - app_network
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    container_name: doctorsoal_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf:/etc/nginx/conf.d
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - app_network
+    restart: always
+
+  certbot:
+    image: certbot/certbot
+    container_name: doctorsoal_certbot
+    volumes:
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    depends_on:
+      - nginx
+
 networks:
-  postgres_network:
-    external: true # فرض شده این شبکه توسط سرویس دیگری (مثلاً docker-compose دیتابیس) ایجاد شده
-  nginx-proxy_proxy-network:
-    external: true # فرض شده این شبکه توسط سرویس دیگری (مثلاً Nginx Proxy یا Nginx Proxy Manager) ایجاد شده
+  app_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

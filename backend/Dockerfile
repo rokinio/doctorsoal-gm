@@ -12,11 +12,10 @@ COPY . .
 # ساخت پروژه
 RUN export NODE_OPTIONS="--max-old-space-size=4096" && node ace build --production --ignore-ts-errors
 
-# تغییر دایرکتوری کاری به پوشه build
-WORKDIR /app/build
+# سپس اجرای مهاجرت‌های دیتابیس (migrations)
+RUN chmod +x ./start-server.sh
 
 EXPOSE 3333
 
-# اجرای برنامه با استفاده از server.js در پوشه build
-CMD ["node", "server.js"]
-
+# اجرای اسکریپت راه‌اندازی
+CMD ["./start-server.sh"]
