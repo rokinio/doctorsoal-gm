@@ -12,35 +12,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY_BASE64 }}" | base64 -d > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
       - name: Deploy to Server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          debug: true
-          script: |
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
             set -e
 
             cd /opt
 
             # بک‌آپ گرفتن از دیتابیس و فایل‌های مهم
-            if [ -d "doctorsoal/backend/tmp" ]; then
-              echo "Taking backup of important files..."
-              mkdir -p /opt/backups/$(date +%Y%m%d)
-              cp -r doctorsoal/backend/tmp /opt/backups/$(date +%Y%m%d)/
+            if [ -d \"doctorsoal/backend/tmp\" ]; then
+              echo \"Taking backup of important files...\"
+              mkdir -p /opt/backups/\$(date +%Y%m%d)
+              cp -r doctorsoal/backend/tmp /opt/backups/\$(date +%Y%m%d)/
             fi
 
             # تنظیم SSH برای استفاده از Deploy Key
-            eval "$(ssh-agent -s)"
+            eval \"\$(ssh-agent -s)\"
             ssh-add ~/.ssh/doctorsoal_deploy_key
 
-            if [ ! -d "doctorsoal/.git" ]; then
+            if [ ! -d \"doctorsoal/.git\" ]; then
               rm -rf doctorsoal
-              GIT_SSH_COMMAND="ssh -i ~/.ssh/doctorsoal_deploy_key -o StrictHostKeyChecking=no" git clone git@github.com:rokinio/doctorsoal.git doctorsoal
+              GIT_SSH_COMMAND=\"ssh -i ~/.ssh/doctorsoal_deploy_key -o StrictHostKeyChecking=no\" git clone git@github.com:rokinio/doctorsoal.git doctorsoal
             else
               cd doctorsoal
-              GIT_SSH_COMMAND="ssh -i ~/.ssh/doctorsoal_deploy_key -o StrictHostKeyChecking=no" git fetch origin main
+              GIT_SSH_COMMAND=\"ssh -i ~/.ssh/doctorsoal_deploy_key -o StrictHostKeyChecking=no\" git fetch origin main
               git reset --hard origin/main
             fi
 
@@ -51,12 +53,12 @@ jobs:
             chmod -R 777 backend/tmp
 
             # بازگردانی فایل‌های مهم از بک‌آپ
-            if [ -d "/opt/backups/$(date +%Y%m%d)/tmp" ]; then
-              echo "Restoring important files..."
-              cp -r /opt/backups/$(date +%Y%m%d)/tmp/* backend/tmp/
+            if [ -d \"/opt/backups/\$(date +%Y%m%d)/tmp\" ]; then
+              echo \"Restoring important files...\"
+              cp -r /opt/backups/\$(date +%Y%m%d)/tmp/* backend/tmp/
             fi
 
-            echo "Stopping all related containers"
+            echo \"Stopping all related containers\"
             docker stop doctorsoal_frontend doctorsoal_backend doctorsoal_postgres || true
             docker rm doctorsoal_frontend doctorsoal_backend doctorsoal_postgres || true
 
@@ -64,10 +66,11 @@ jobs:
             docker-compose -f docker-compose.prod.yml down
             docker-compose -f docker-compose.prod.yml up --build -d
 
-            echo "Checking container status"
+            echo \"Checking container status\"
             docker ps | grep doctorsoal
 
             # بازنشانی nginx برای اعمال تغییرات
             docker restart nginx
 
-            echo "Deployment completed!"
+            echo \"Deployment completed!\"
+          "
