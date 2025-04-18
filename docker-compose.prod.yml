@@ -1,82 +1,67 @@
-version: "3.8"
+version: "3.7"
 
 services:
-  postgres:
-    image: postgres:13
-    container_name: doctorsoal_postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: zkw8gxy1qga.BGZ6qzv
-      POSTGRES_DB: doctorsoal
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  # --- سرویس فرانت‌اند ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+        API_URL: https://panel.doctorsoal.com/api
+    container_name: doctorsoal_frontend
+    restart: unless-stopped
+    ports:
+      - 3000:80
     networks:
-      - app_network
-    restart: always
+      - doctorsoal_network
 
+  # --- سرویس بک‌اند ---
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: doctorsoal_backend
+    restart: unless-stopped
+    networks:
+      - doctorsoal_network
+    env_file:
+      - ./backend/.env.production
     environment:
-      PORT: 3333
-      HOST: 0.0.0.0
-      NODE_ENV: production
-      APP_KEY: rH552sQ6DDyRt7c2_Qd1Rr9HII4Km3MQ
-      APP_NAME: DoctorSoal
-      DRIVE_DISK: local
-      DB_CONNECTION: pg
-      PG_HOST: postgres
-      PG_PORT: 5432
-      PG_USER: postgres
-      PG_PASSWORD: zkw8gxy1qga.BGZ6qzv
-      PG_DB_NAME: doctorsoal
-      N8N_WEBHOOK_URL: https://n8n.hamyar.ai/webhook
+      - PORT=3333
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - DB_CONNECTION=pg
+      - PG_HOST=doctorsoal_postgres
+      - PG_PORT=5432
+      - PG_USER=postgres
+      - PG_PASSWORD=zkw8gxy1qga.BGZ6qzv
+      - PG_DB_NAME=doctorsoal
+    volumes:
+      - ./backend/tmp:/app/tmp
     depends_on:
       - postgres
-    networks:
-      - app_network
-    restart: always
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: doctorsoal_frontend
-    networks:
-      - app_network
-    restart: always
-
-  nginx:
-    image: nginx:latest
-    container_name: doctorsoal_nginx
-    ports:
-      - "80:80"
-      - "443:443"
+  # --- سرویس دیتابیس ---
+  postgres:
+    image: postgres:14 # استفاده از نسخه 14 برای جلوگیری از مشکلات ناسازگاری
+    container_name: doctorsoal_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=zkw8gxy1qga.BGZ6qzv
+      - POSTGRES_DB=doctorsoal
     volumes:
-      - ./nginx/conf:/etc/nginx/conf.d
-      - ./nginx/certbot/conf:/etc/letsencrypt
-      - ./nginx/certbot/www:/var/www/certbot
-    depends_on:
-      - frontend
-      - backend
+      - postgres_data:/var/lib/postgresql/data
     networks:
-      - app_network
-    restart: always
+      - doctorsoal_network
 
-  certbot:
-    image: certbot/certbot
-    container_name: doctorsoal_certbot
-    volumes:
-      - ./nginx/certbot/conf:/etc/letsencrypt
-      - ./nginx/certbot/www:/var/www/certbot
-    depends_on:
-      - nginx
-
-networks:
-  app_network:
-    driver: bridge
-
+# --- تعریف ولوم‌ها ---
 volumes:
   postgres_data:
+    name: doctorsoal_postgres_data
+
+# --- تعریف شبکه‌ها ---
+networks:
+  doctorsoal_network:
+    external: true
