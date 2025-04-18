@@ -22,7 +22,7 @@ jobs:
             set -e
 
             # مسیر پروژه خود را اینجا قرار دهید
-            cd /opt/doctorsoal
+            cd /opt/doctorsoal-gm
 
             # دریافت تغییرات جدید
             git fetch origin
