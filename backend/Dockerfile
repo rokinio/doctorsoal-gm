@@ -12,8 +12,9 @@ COPY . .
 # ساخت پروژه
 RUN export NODE_OPTIONS="--max-old-space-size=4096" && node ace build --production --ignore-ts-errors
 
-# سپس اجرای مهاجرت‌های دیتابیس (migrations)
-RUN chmod +x ./start-server.sh
+# تغییر در اسکریپت راه‌اندازی
+RUN echo '#!/bin/sh\ncd /app\nnode build/server.js' > /app/start-server.sh
+RUN chmod +x /app/start-server.sh
 
 EXPOSE 3333
 
