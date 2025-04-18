@@ -67,7 +67,7 @@ jobs:
             echo "Checking container status"
             docker ps | grep doctorsoal
 
-            # بازنشانی nginx برای اعمال تغییرات
+            # بازنشانی nginx  برای اعمال تغییرات
             docker restart nginx
 
             echo "Deployment completed!"
