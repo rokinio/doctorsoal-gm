@@ -102,10 +102,7 @@ export async function fetchRawQuestions() {
   try {
     startLoading();
 
-    // شبیه‌سازی تاخیر شبکه
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // داده‌های نمونه
+    const { data } = await apiRequest("/raw-questions");
     const data = [
       {
         id: 1,
@@ -199,13 +196,13 @@ export async function fetchRawQuestions() {
 }
 
 // دریافت سوالات پردازش شده
-import { get } from "../utils/http.js";
+import { apiRequest } from "../utils/http.js";
 
 export async function fetchProcessedQuestions() {
   try {
     startLoading();
 
-    const { data } = await get("/processed-questions");
+    const { data } = await apiRequest("/processed-questions");
 
     processedQuestions.set(data);
   } catch (err) {
@@ -221,10 +218,7 @@ export async function fetchPublishedQuestions() {
   try {
     startLoading();
 
-    // شبیه‌سازی تاخیر شبکه
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // داده‌های نمونه
+    const { data } = await apiRequest("/published-questions");
     const data = [
       {
         id: 1,
@@ -292,11 +286,7 @@ export async function fetchQuestionById(id) {
   try {
     startLoading();
 
-    // شبیه‌سازی تاخیر شبکه
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // در حالت واقعی اینجا درخواست API انجام می‌شود
-    // برای نمونه یک داده ثابت برمی‌گردانیم
+    const { data } = await apiRequest(`/raw-questions/${id}`);
 
     const questionData = {
       id: id,
