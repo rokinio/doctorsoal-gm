@@ -17,13 +17,14 @@
     async function fetchData() {
       try {
         isLoading = true;
-        const response = await fetch(`${API_BASE_URL}/published-stats`);
+        // استفاده از سرویس HTTP با احراز هویت
+        const { data, ok, status } = await import('../utils/http.js').then(module => {
+          return module.get('published-stats');
+        });
         
-        if (!response.ok) {
-          throw new Error(`خطا در دریافت آمار: ${response.status}`);
+        if (!ok) {
+          throw new Error(`خطا در دریافت آمار: ${status}`);
         }
-        
-        const data = await response.json();
         
         // تبدیل تاریخ‌ها به تاریخ جلالی
         chartData = data.map(item => {

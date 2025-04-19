@@ -1,6 +1,12 @@
 // start/routes.ts
 import Route from "@ioc:Adonis/Core/Route";
 
+// مسیرهای مربوط به احراز هویت
+Route.post("/api/login", "AuthController.login");
+Route.post("/api/change-password", "AuthController.changePassword").middleware(
+  "auth"
+);
+
 Route.group(() => {
   // دریافت لیست سوالات منتشر شده
   Route.get("/published-questions", "PublishedQuestionsController.index");
@@ -40,4 +46,6 @@ Route.group(() => {
   Route.put("/raw-questions/:id", "RawQuestionsController.update"); // این خط را اضافه کنید
   Route.delete("/raw-questions/:id", "RawQuestionsController.destroy");
   Route.get("/api/raw-questions/stats", "RawQuestionsController.stats");
-}).prefix("api");
+})
+  .prefix("api")
+  .middleware("auth");

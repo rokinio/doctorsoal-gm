@@ -1,14 +1,23 @@
 <script>
   import Icon from '@iconify/svelte';
   import { onMount } from 'svelte';
+  import { logout, user } from '../utils/auth.js';
   
   let sidebarOpen = true;
   let currentPage = '';
+  let username = '';
   
   onMount(() => {
     // تشخیص صفحه فعلی از URL
     const path = window.location.pathname;
     currentPage = path === '/' ? 'dashboard' : path.slice(1).split('/')[0];
+  });
+  
+  // دریافت نام کاربری از استور
+  user.subscribe(value => {
+    if (value) {
+      username = value.username;
+    }
   });
   
   function toggleSidebar() {
@@ -18,6 +27,12 @@
   function handleNavigation(route) {
     currentPage = route;
     window.location.href = '/' + (route === 'dashboard' ? '' : route);
+  }
+  
+  // تابع خروج از سیستم
+  function handleLogout() {
+    logout();
+    window.location.href = '/login';
   }
   
   const menuItems = [
@@ -44,6 +59,14 @@
         <Icon icon={sidebarOpen ? "mdi:chevron-right" : "mdi:chevron-left"} class="text-xl" />
       </button>
     </div>
+    
+    <!-- User info -->
+    {#if sidebarOpen}
+
+    {:else}
+      <div class="px-4 py-2 border-t border-indigo-700 flex justify-center">
+      </div>
+    {/if}
     
     <!-- Menu items -->
     <div class="mt-8">
@@ -75,8 +98,8 @@
           <button class="p-2 rounded-full hover:bg-gray-100">
             <Icon icon="mdi:bell" class="text-xl" />
           </button>
-          <button class="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100">
-            <span class="ml-2">خروج</span>
+          <button on:click={handleLogout} class="flex items-center gap-1 p-2 rounded-full hover:bg-gray-100">
+            <span class="text-sm text-black">{username}</span>
             <Icon icon="mdi:logout" class="text-xl" />
           </button>
         </div>

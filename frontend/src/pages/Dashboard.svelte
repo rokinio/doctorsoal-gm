@@ -17,13 +17,14 @@
 
   async function fetchDashboardStats() {
     try {
-      const response = await fetch(`${API_BASE_URL}/dashboard-stats`);
+      // استفاده از سرویس HTTP با احراز هویت
+      const { data, ok, status } = await import('../utils/http.js').then(module => {
+        return module.get('dashboard-stats');
+      });
       
-      if (!response.ok) {
-        throw new Error(`خطا در دریافت آمار داشبورد: ${response.status}`);
+      if (!ok) {
+        throw new Error(`خطا در دریافت آمار داشبورد: ${status}`);
       }
-      
-      const data = await response.json();
       
       // به‌روزرسانی آمارها
       stats[0].count = data.raw_count;
@@ -50,13 +51,16 @@
   // دریافت سوالات اخیر
   async function fetchRecentQuestions() {
     try {
-      const response = await fetch(`${API_BASE_URL}/recent-questions`);
+      // استفاده از سرویس HTTP با احراز هویت
+      const { data, ok, status } = await import('../utils/http.js').then(module => {
+        return module.get('recent-questions');
+      });
       
-      if (!response.ok) {
-        throw new Error(`خطا در دریافت سوالات اخیر: ${response.status}`);
+      if (!ok) {
+        throw new Error(`خطا در دریافت سوالات اخیر: ${status}`);
       }
       
-      recentQuestions = await response.json();
+      recentQuestions = data;
       recentError = null;
     } catch (err) {
       console.error('خطا در دریافت سوالات اخیر:', err);

@@ -2,6 +2,7 @@
   import Icon from '@iconify/svelte';
   import { onMount } from 'svelte';
   import { API_BASE_URL } from '../config.js';
+  import { fetchWithAuth } from '../utils/auth.js';
 
   // برای رفع مشکل از window.location استفاده می‌کنیم به جای navigate
   function navigateToEditQuestion(id) {
@@ -45,7 +46,7 @@ let statuses = [
 // این تابع را بعد از تابع fetchQuestions اضافه کنید
 async function fetchCategories() {
   try {
-    const response = await fetch(`${API_BASE_URL}/categories`);
+    const response = await fetchWithAuth(`${API_BASE_URL}/categories`);
     
     if (!response.ok) {
       throw new Error(`خطا در دریافت دسته‌بندی‌ها: ${response.status}`);
@@ -78,7 +79,7 @@ if (filters.category) searchParams.append('category_id', filters.category);
 if (filters.status) searchParams.append('status', filters.status);
 if (filters.conversationCount) searchParams.append('conversation_count', filters.conversationCount); // تغییر به conversation_count
 
-const response = await fetch(`${API_BASE_URL}/raw-questions?${searchParams.toString()}`);
+const response = await fetchWithAuth(`${API_BASE_URL}/raw-questions?${searchParams.toString()}`);
 
     if (!response.ok) {
       throw new Error(`خطا در دریافت اطلاعات: ${response.status}`);
@@ -176,7 +177,7 @@ async function sendToN8n(id) {
     isLoading = true;
     
     // ارسال درخواست به API
-    const response = await fetch(`${API_BASE_URL}/raw-questions/${id}/send-to-n8n`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/raw-questions/${id}/send-to-n8n`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -216,7 +217,7 @@ async function sendToN8n(id) {
   async function deleteQuestion(id) {
     if (confirm('آیا از حذف این سوال اطمینان دارید؟')) {
       try {
-        const response = await fetch(`${API_BASE_URL}/raw-questions/${id}`, {
+        const response = await fetchWithAuth(`${API_BASE_URL}/raw-questions/${id}`, {
           method: 'DELETE'
         });
 
