@@ -1,6 +1,6 @@
 // frontend/src/utils/auth.js
-import { API_BASE_URL } from "../config.js";
 import { writable } from "svelte/store";
+import { API_BASE_URL } from "../config.js";
 
 // ذخیره وضعیت احراز هویت کاربر
 export const isAuthenticated = writable(false);
@@ -38,7 +38,10 @@ export async function login(username, password) {
 
       return { success: true, message: data.message };
     } else {
-      return { success: false, message: data.message };
+      return {
+        success: false,
+        message: data.message || "نام کاربری یا رمز عبور نادرست است",
+      };
     }
   } catch (error) {
     console.error("خطا در ورود به سیستم:", error);
@@ -71,9 +74,11 @@ export function checkAuth() {
     isAuthenticated.set(true);
     user.set({ username });
     return true;
+  } else {
+    isAuthenticated.set(false);
+    user.set(null);
+    return false;
   }
-
-  return false;
 }
 
 /**
@@ -104,8 +109,20 @@ export async function fetchWithAuth(url, options = {}) {
     ...getAuthHeaders(),
   };
 
-  return fetch(url, {
+  const response = await fetch(url, {
     ...options,
     headers,
   });
+
+  // اگر خطای 401 دریافت شد، کاربر را به صفحه لاگین هدایت کنید
+  if (response.status === 401) {
+    // پاکسازی اطلاعات احراز هویت
+    logout();
+
+    // ذخیره مسیر فعلی برای بازگشت پس از لاگین
+    const currentPath = window.location.pathname;
+    window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+  }
+
+  return response;
 }

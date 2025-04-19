@@ -1,9 +1,9 @@
+<!-- frontend/src/pages/Dashboard.svelte -->
 <script>
   import Icon from '@iconify/svelte';
-  import { navigate } from 'svelte-routing';
   import { onMount } from 'svelte';
-  import { API_BASE_URL } from '../config.js';
   import PublishedQuestionsChart from '../components/PublishedQuestionsChart.svelte';
+  import { get } from '../utils/http.js'; // استفاده مستقیم از توابع
 
   // داده‌های نمایشی برای داشبورد
   let stats = [
@@ -12,15 +12,20 @@
     { title: 'سوالات منتشر شده', count: 0, icon: 'mdi:file-send', color: 'bg-purple-500' },
     { title: 'بازدید کل', count: 0, icon: 'mdi:eye', color: 'bg-yellow-500' }
   ];
+  
   let isLoading = true;
   let error = null;
+  
+  // داده‌های سوالات اخیر
+  let recentQuestions = [];
+  let isRecentLoading = true;
+  let recentError = null;
 
+  // دریافت آمار داشبورد
   async function fetchDashboardStats() {
     try {
-      // استفاده از سرویس HTTP با احراز هویت
-      const { data, ok, status } = await import('../utils/http.js').then(module => {
-        return module.get('dashboard-stats');
-      });
+      isLoading = true;
+      const { data, ok, status } = await get('dashboard-stats');
       
       if (!ok) {
         throw new Error(`خطا در دریافت آمار داشبورد: ${status}`);
@@ -41,20 +46,11 @@
     }
   }
 
-  
-    
-  // داده‌های سوالات اخیر
-  let recentQuestions = [];
-  let isRecentLoading = true;
-  let recentError = null;
-
   // دریافت سوالات اخیر
   async function fetchRecentQuestions() {
     try {
-      // استفاده از سرویس HTTP با احراز هویت
-      const { data, ok, status } = await import('../utils/http.js').then(module => {
-        return module.get('recent-questions');
-      });
+      isRecentLoading = true;
+      const { data, ok, status } = await get('recent-questions');
       
       if (!ok) {
         throw new Error(`خطا در دریافت سوالات اخیر: ${status}`);
@@ -69,16 +65,16 @@
       isRecentLoading = false;
     }
   }
-    
+  
   // حرکت به صفحه جزئیات سوال
   function goToQuestion(id) {
-    navigate(`/edit-question/${id}`);
+    window.location.href = `/edit-question/${id}`;
   }
-    
+  
   onMount(() => {
     fetchDashboardStats();
     fetchRecentQuestions();
-      });
+  });
 </script>
   
 <div class="container mx-auto">
@@ -90,6 +86,12 @@
   {:else if error}
     <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
       <p>{error}</p>
+      <button 
+        on:click={fetchDashboardStats}
+        class="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+      >
+        تلاش مجدد
+      </button>
     </div>
   {:else}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -116,7 +118,7 @@
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-semibold">سوالات اخیر</h2>
         <button 
-          on:click={() => navigate('/raw-questions')}
+          on:click={() => window.location.href = '/raw-questions'}
           class="text-indigo-600 hover:text-indigo-800 text-sm flex items-center"
         >
           مشاهده همه
@@ -131,6 +133,12 @@
       {:else if recentError}
         <div class="bg-red-100 text-red-700 p-4 rounded-lg">
           <p>{recentError}</p>
+          <button 
+            on:click={fetchRecentQuestions}
+            class="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+          >
+            تلاش مجدد
+          </button>
         </div>
       {:else if recentQuestions.length === 0}
         <div class="p-8 text-center text-gray-500">

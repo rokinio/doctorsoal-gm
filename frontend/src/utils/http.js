@@ -1,6 +1,21 @@
 // frontend/src/utils/http.js
 import { API_BASE_URL } from "../config.js";
-import { getAuthHeaders, isAuthenticated } from "./auth.js";
+
+/**
+ * تابع دریافت هدرهای احراز هویت
+ * @returns {Object} هدرهای احراز هویت
+ */
+export function getAuthHeaders() {
+  const token = localStorage.getItem("auth_token");
+
+  if (token) {
+    return {
+      Authorization: `Basic ${token}`,
+    };
+  }
+
+  return {};
+}
 
 /**
  * تابع ارسال درخواست به API با احراز هویت
@@ -26,7 +41,10 @@ export async function apiRequest(endpoint, options = {}) {
 
     // اگر خطای 401 (عدم احراز هویت) دریافت شد، کاربر را به صفحه لاگین هدایت کنید
     if (response.status === 401) {
-      isAuthenticated.set(false);
+      // پاکسازی اطلاعات احراز هویت محلی
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("username");
+
       // ذخیره مسیر فعلی برای بازگشت پس از لاگین
       const currentPath = window.location.pathname;
       window.location.href = `/login?redirect=${encodeURIComponent(
@@ -36,13 +54,15 @@ export async function apiRequest(endpoint, options = {}) {
     }
 
     // تلاش برای پارس کردن پاسخ به عنوان JSON
+    let data = null;
     try {
-      const data = await response.json();
-      return { data, status: response.status, ok: response.ok };
+      data = await response.json();
     } catch (e) {
-      // اگر پاسخ JSON نباشد
-      return { data: null, status: response.status, ok: response.ok };
+      // اگر پاسخ JSON نباشد، خطا را نادیده می‌گیریم و data را null قرار می‌دهیم
+      console.warn("پاسخ JSON نیست:", e);
     }
+
+    return { data, status: response.status, ok: response.ok };
   } catch (error) {
     console.error(`خطا در درخواست به ${endpoint}:`, error);
     throw error;

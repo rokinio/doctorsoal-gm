@@ -1,9 +1,9 @@
 <!-- frontend/src/pages/PublishedQuestions.svelte -->
 <script>
   import Icon from '@iconify/svelte';
-  import { navigate } from 'svelte-routing';
   import { onMount } from 'svelte';
   import { API_BASE_URL } from '../config.js';
+  import { get, del } from '../utils/http.js'; // استفاده مستقیم از توابع
   
   // متغیرهای دیتا
   let questions = [];
@@ -34,13 +34,13 @@
   // دریافت دسته‌بندی‌ها
   async function fetchCategories() {
     try {
-      const response = await fetch(`${API_BASE_URL}/categories`);
+      const { data, ok, status } = await get('categories');
       
-      if (!response.ok) {
-        throw new Error(`خطا در دریافت دسته‌بندی‌ها: ${response.status}`);
+      if (!ok) {
+        throw new Error(`خطا در دریافت دسته‌بندی‌ها: ${status}`);
       }
       
-      categories = await response.json();
+      categories = data;
     } catch (err) {
       console.error('خطا در دریافت دسته‌بندی‌ها:', err);
     }
@@ -60,23 +60,22 @@
       
       if (filters.category) searchParams.append('category_id', filters.category);
       
-      const response = await fetch(`${API_BASE_URL}/published-questions?${searchParams.toString()}`);
+      const { data, ok, status } = await get(`published-questions?${searchParams.toString()}`);
       
-      if (!response.ok) {
-        throw new Error(`خطا در دریافت اطلاعات: ${response.status}`);
+      if (!ok) {
+        throw new Error(`خطا در دریافت اطلاعات: ${status}`);
       }
       
-      const result = await response.json();
-      questions = result.data || [];
+      questions = data.data || [];
       filteredQuestions = [...questions]; // با کپی کردن آرایه کار می‌کنیم
       
-      // پردازش فیلترهای محلی
+      // اعمال فیلترهای محلی
       applyLocalFilters();
       
       // اطلاعات پیجینیشن
-      if (result.meta) {
-        totalPages = result.meta.last_page || 1;
-        totalRecords = result.meta.total || 0;
+      if (data.meta) {
+        totalPages = data.meta.last_page || 1;
+        totalRecords = data.meta.total || 0;
         
         // اطمینان از معتبر بودن شماره صفحه جاری
         if (currentPage > totalPages && totalPages > 0) {
@@ -146,12 +145,10 @@
   async function unpublishQuestion(id) {
     if (confirm('آیا از حذف انتشار این سوال اطمینان دارید؟')) {
       try {
-        const response = await fetch(`${API_BASE_URL}/published-questions/${id}`, {
-          method: 'DELETE'
-        });
+        const { ok, status } = await del(`published-questions/${id}`);
         
-        if (!response.ok) {
-          throw new Error(`خطا در حذف انتشار سوال: ${response.status}`);
+        if (!ok) {
+          throw new Error(`خطا در حذف انتشار سوال: ${status}`);
         }
         
         // حذف از لیست محلی
@@ -335,6 +332,12 @@
 {:else if error}
   <div class="bg-red-100 p-4 rounded-lg mb-6">
     <p class="text-red-700">{error}</p>
+    <button 
+      on:click={fetchQuestions}
+      class="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+    >
+      تلاش مجدد
+    </button>
   </div>
 {:else}
   <!-- جدول سوالات -->

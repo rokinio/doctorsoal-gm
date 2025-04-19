@@ -1,7 +1,9 @@
+<!-- frontend/src/pages/EditQuestion.svelte -->
 <script>
   import Icon from '@iconify/svelte';
   import { onMount } from 'svelte';
   import { API_BASE_URL } from '../config.js';
+  import { get, put } from '../utils/http.js'; // استفاده مستقیم از توابع
   
   // پارامترهای URL برای دریافت شناسه سوال
   export let id;
@@ -37,13 +39,13 @@
     error = null;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/raw-questions/${id}`);
+      const { data, ok, status } = await get(`raw-questions/${id}`);
       
-      if (!response.ok) {
-        throw new Error(`خطا در دریافت اطلاعات سوال: ${response.status}`);
+      if (!ok) {
+        throw new Error(`خطا در دریافت اطلاعات سوال: ${status}`);
       }
       
-      question = await response.json();
+      question = data;
       
       // اطمینان از وجود آرایه گفتگو
       if (!Array.isArray(question.conversation)) {
@@ -61,13 +63,13 @@
   // دریافت دسته‌بندی‌ها
   async function fetchCategories() {
     try {
-      const response = await fetch(`${API_BASE_URL}/categories`);
+      const { data, ok, status } = await get('categories');
       
-      if (!response.ok) {
-        throw new Error(`خطا در دریافت دسته‌بندی‌ها: ${response.status}`);
+      if (!ok) {
+        throw new Error(`خطا در دریافت دسته‌بندی‌ها: ${status}`);
       }
       
-      categories = await response.json();
+      categories = data;
     } catch (err) {
       console.error('خطا در دریافت دسته‌بندی‌ها:', err);
     }
@@ -89,16 +91,12 @@
   // ذخیره تغییرات سوال
   async function saveQuestion() {
     try {
-      const response = await fetch(`${API_BASE_URL}/raw-questions/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(question)
-      });
+      isLoading = true;
       
-      if (!response.ok) {
-        throw new Error(`خطا در ذخیره سوال: ${response.status}`);
+      const { data, ok, status } = await put(`raw-questions/${id}`, question);
+      
+      if (!ok) {
+        throw new Error(`خطا در ذخیره سوال: ${status}`);
       }
       
       alert('سوال با موفقیت ذخیره شد.');
@@ -106,6 +104,8 @@
     } catch (err) {
       console.error('خطا در ذخیره سوال:', err);
       alert(`خطا در ذخیره سوال: ${err.message}`);
+    } finally {
+      isLoading = false;
     }
   }
   
@@ -130,6 +130,15 @@
   {:else if error}
     <div class="bg-red-100 p-4 rounded-lg mb-6">
       <p class="text-red-700">{error}</p>
+      <button 
+        on:click={() => {
+          fetchQuestion();
+          fetchCategories();
+        }}
+        class="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+      >
+        تلاش مجدد
+      </button>
     </div>
   {:else}
     <div class="flex justify-between items-center mb-6">
@@ -246,6 +255,11 @@
                 </button>
               </div>
               <div class="whitespace-pre-line">{message.message}</div>
+            </div>
+          {:else}
+            <div class="text-center py-8 text-gray-500">
+              <Icon icon="mdi:chat-outline" class="text-4xl mx-auto mb-2" />
+              <p>هنوز پیامی در این گفتگو وجود ندارد.</p>
             </div>
           {/each}
         </div>
