@@ -199,61 +199,13 @@ export async function fetchRawQuestions() {
 }
 
 // دریافت سوالات پردازش شده
+import { get } from "../utils/http.js";
+
 export async function fetchProcessedQuestions() {
   try {
     startLoading();
 
-    // شبیه‌سازی تاخیر شبکه
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // داده‌های نمونه
-    const data = [
-      {
-        id: 1,
-        trackingCode: "QS-12345",
-        subject: "مشکل پوستی و جوش صورت",
-        category: "پوست",
-        site: "سایت دکتر سلام",
-        department: "پوست و مو",
-        status: "processed",
-      },
-      {
-        id: 2,
-        trackingCode: "QS-12346",
-        subject: "سردرد مزمن و مشکلات خواب",
-        category: "مغز و اعصاب",
-        site: "کلینیک آنلاین",
-        department: "مغز و اعصاب",
-        status: "processed",
-      },
-      {
-        id: 3,
-        trackingCode: "QS-12347",
-        subject: "آلرژی فصلی و آبریزش بینی",
-        category: "آلرژی",
-        site: "سایت دکتر سلام",
-        department: "آلرژی",
-        status: "processed",
-      },
-      {
-        id: 4,
-        trackingCode: "QS-12348",
-        subject: "درد مفاصل زانو",
-        category: "ارتوپدی",
-        site: "کلینیک آنلاین",
-        department: "ارتوپدی",
-        status: "processed",
-      },
-      {
-        id: 5,
-        trackingCode: "QS-12349",
-        subject: "مشکل گوارشی و نفخ شکم",
-        category: "گوارش",
-        site: "سایت دکتر سلام",
-        department: "گوارش",
-        status: "processed",
-      },
-    ];
+    const { data } = await get("/processed-questions");
 
     processedQuestions.set(data);
   } catch (err) {
