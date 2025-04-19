@@ -42,6 +42,7 @@ services:
       - PG_USER=postgres
       - PG_PASSWORD=doctorsoal
       - PG_DB_NAME=doctorsoal
+      - N8N_WEBHOOK_URL=https://n8n.hamyar.ai/webhook/f360f7e9-2fc3-4ecc-9e35-4e5bd371752c
     volumes:
       - ./backend/tmp:/app/tmp
 
