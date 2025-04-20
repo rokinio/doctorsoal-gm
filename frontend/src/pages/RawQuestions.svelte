@@ -41,7 +41,8 @@ let statuses = [
     site: '',
     department: '',
     status: '',
-    conversationCount: '' 
+    conversationCount: '',
+    sort: 'views_desc' // مرتب‌سازی پیش‌فرض بر اساس بازدیدها (نزولی)
   };
 // این تابع را بعد از تابع fetchQuestions اضافه کنید
 async function fetchCategories() {
@@ -78,6 +79,7 @@ if (filters.subject) searchParams.append('search', filters.subject);
 if (filters.category) searchParams.append('category_id', filters.category);
 if (filters.status) searchParams.append('status', filters.status);
 if (filters.conversationCount) searchParams.append('conversation_count', filters.conversationCount); // تغییر به conversation_count
+if (filters.sort) searchParams.append('sort', filters.sort); // اضافه کردن پارامتر مرتب‌سازی
 
 const response = await fetchWithAuth(`${API_BASE_URL}/raw-questions?${searchParams.toString()}`);
 
@@ -111,10 +113,12 @@ const response = await fetchWithAuth(`${API_BASE_URL}/raw-questions?${searchPara
 
   // اعمال فیلترها به صورت محلی
 // اعمال فیلترها به صورت محلی
-function applyFilters() {
-  fetchQuestions();
+async function applyFilters() {
+  // ابتدا درخواست جدید به سرور ارسال می‌کنیم تا داده‌ها با مرتب‌سازی جدید دریافت شوند
+  await fetchQuestions();
   if (!questions) return; // اطمینان از وجود داده
 
+  // سپس فیلترهای محلی را اعمال می‌کنیم
   filteredQuestions = questions.filter(q => {
     // بررسی فیلتر تعداد مکالمه
     let matchesConversationCount = true;
@@ -156,7 +160,8 @@ function applyFilters() {
       site: '',
       department: '',
       status: '',
-      conversationCount: ''
+      conversationCount: '',
+      sort: 'views_desc' // حفظ مرتب‌سازی پیش‌فرض بر اساس بازدیدها
     };
     
     // Make sure questions array exists before trying to copy it
@@ -398,13 +403,17 @@ async function sendToN8n(id) {
         />
       </div>
       <div class="w-full md:w-1/2 lg:w-1/6 px-2 mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">بخش</label>
-        <input
-          type="text"
-          bind:value={filters.department}
-          on:input={applyFilters}
+        <label class="block text-sm font-medium text-gray-700 mb-1">مرتب‌سازی</label>
+        <select
+          bind:value={filters.sort}
+          on:change={applyFilters}
           class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-        />
+        >
+          <option value="views_desc">بیشترین بازدید</option>
+          <option value="views_asc">کمترین بازدید</option>
+          <option value="created_at_desc">جدیدترین</option>
+          <option value="created_at_asc">قدیمی‌ترین</option>
+        </select>
       </div>
       <div class="w-full md:w-1/2 lg:w-1/6 px-2 mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-1">تعداد مکالمه</label>
@@ -460,7 +469,7 @@ async function sendToN8n(id) {
               <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 شناسه
               </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
                 موضوع
               </th>
               <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -476,6 +485,9 @@ async function sendToN8n(id) {
                 مکالمه
               </th>
               <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                بازدیدها
+              </th>
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 عملیات
               </th>
             </tr>
@@ -486,8 +498,43 @@ async function sendToN8n(id) {
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="text-sm text-gray-900">{question.id}</div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900">{question.question}</div>
+                <td class="px-6 py-4 whitespace-normal">
+                  <div class="relative group">
+                    <div class="text-sm text-gray-900 max-w-xs truncate">{question.question?.substring(0, 50)}{question.question?.length > 50 ? '...' : ''}</div>
+                    {#if question.question && question.question.length > 50}
+                      <button 
+                        class="mt-1 text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none"
+                        on:click|stopPropagation={() => {
+                          const modal = document.createElement('div');
+                          modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                          modal.innerHTML = `
+                            <div class="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                              <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-medium">متن کامل سوال</h3>
+                                <button class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                  </svg>
+                                </button>
+                              </div>
+                              <p class="text-gray-800 whitespace-pre-wrap">${question.question}</p>
+                            </div>
+                          `;
+                          
+                          document.body.appendChild(modal);
+                          
+                          // بستن مودال با کلیک روی دکمه یا خارج از محتوا
+                          modal.addEventListener('click', (e) => {
+                            if (e.target === modal || e.target.closest('button')) {
+                              document.body.removeChild(modal);
+                            }
+                          });
+                        }}
+                      >
+                        نمایش بیشتر...
+                      </button>
+                    {/if}
+                  </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="text-sm text-gray-500">{question.category?.name || 'بدون دسته‌بندی'}</div>
@@ -514,6 +561,9 @@ async function sendToN8n(id) {
                       `${question.conversation.length} پیام` : 
                       'بدون مکالمه'}
                   </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm text-gray-900">{question.original_viewer_count || 0}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div class="flex space-x-3 space-x-reverse">

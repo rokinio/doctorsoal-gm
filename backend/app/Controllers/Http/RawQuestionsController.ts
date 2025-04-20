@@ -16,6 +16,7 @@ export default class RawQuestionsController {
       const categoryId = request.input("category_id");
       const search = request.input("search");
       const hasConversation = request.input("has_conversation"); // پارامتر جدید برای فیلتر مکالمه
+      const sort = request.input("sort", "id_desc"); // پارامتر مرتب‌سازی با مقدار پیش‌فرض id_desc
 
       const query = RawQuestion.query().preload("category"); // پیش‌بارگذاری اطلاعات دسته‌بندی
 
@@ -45,8 +46,19 @@ export default class RawQuestionsController {
         }
       }
 
-      // اضافه کردن مرتب‌سازی بر اساس آیدی به صورت نزولی
-      query.orderBy("id", "desc");
+      // اعمال مرتب‌سازی بر اساس پارامتر sort
+      if (sort === "views_desc") {
+        query.orderBy("original_viewer_count", "desc");
+      } else if (sort === "views_asc") {
+        query.orderBy("original_viewer_count", "asc");
+      } else if (sort === "created_at_desc") {
+        query.orderBy("created_at", "desc");
+      } else if (sort === "created_at_asc") {
+        query.orderBy("created_at", "asc");
+      } else {
+        // مرتب‌سازی پیش‌فرض بر اساس آیدی به صورت نزولی
+        query.orderBy("id", "desc");
+      }
 
       const rawQuestions = await query.paginate(page, limit);
 
