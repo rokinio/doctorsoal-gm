@@ -10,6 +10,7 @@ export default class RawQuestionsController {
     try {
       const page = request.input("page", 1);
       const limit = request.input("limit", 10);
+      const site = request.input("site");
 
       // دریافت پارامترهای فیلتر
       const status = request.input("status");
@@ -27,6 +28,9 @@ export default class RawQuestionsController {
 
       if (categoryId) {
         query.where("category_id", categoryId);
+      }
+      if (site) {
+        query.where("source", "ILIKE", `%${site}%`);
       }
 
       if (search) {

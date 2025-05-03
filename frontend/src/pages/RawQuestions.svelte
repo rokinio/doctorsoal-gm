@@ -80,6 +80,7 @@ if (filters.category) searchParams.append('category_id', filters.category);
 if (filters.status) searchParams.append('status', filters.status);
 if (filters.conversationCount) searchParams.append('conversation_count', filters.conversationCount); // تغییر به conversation_count
 if (filters.sort) searchParams.append('sort', filters.sort); // اضافه کردن پارامتر مرتب‌سازی
+if (filters.site) searchParams.append('site', filters.site);
 
 const response = await fetchWithAuth(`${API_BASE_URL}/raw-questions?${searchParams.toString()}`);
 
